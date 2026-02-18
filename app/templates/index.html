@@ -955,11 +955,13 @@
             citySel.disabled = true;
             if (country && citiesData[country]) {
                 const cities = citiesData[country].cities;
+                let cityList = [];
                 if (Array.isArray(cities)) {
-                    cities.forEach(c => citySel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+                    cityList = cities.map(c => c.name).sort((a, b) => a.localeCompare(b));
                 } else {
-                    Object.keys(cities).forEach(c => citySel.innerHTML += `<option value="${c}">${c}</option>`);
+                    cityList = Object.keys(cities).sort((a, b) => a.localeCompare(b));
                 }
+                cityList.forEach(c => citySel.innerHTML += `<option value="${c}">${c}</option>`);
                 citySel.disabled = false;
             }
         }
