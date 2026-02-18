@@ -348,6 +348,8 @@ async def get_prayer_times(
         "iftar": prayer_times["iftar"],
         "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
         "is_derived": prayer_times.get("is_derived", False),
+        "hijri_date": prayer_times.get("hijri_date", {}),
+        "gregorian_date": prayer_times.get("gregorian_date", {}),
     }
     
     if debug:
@@ -390,6 +392,9 @@ async def get_all_fiqh_prayer_times(
     
     # Fetch times for all three methods
     results = {}
+    hijri_date = None
+    gregorian_date_info = None
+    
     for method in FIQH_METHODS:
         try:
             times = await prayer_service.get_prayer_times(
@@ -401,6 +406,11 @@ async def get_all_fiqh_prayer_times(
                 calculation_method=calculation_method,
                 include_debug=debug
             )
+            
+            # Get Hijri date from first successful response
+            if hijri_date is None and times.get("hijri_date"):
+                hijri_date = times["hijri_date"]
+                gregorian_date_info = times.get("gregorian_date", {})
             
             results[method] = {
                 "fiqh_method": method,
@@ -431,7 +441,9 @@ async def get_all_fiqh_prayer_times(
         "lon": lon,
         "calculation_method": calculation_method,
         "format_12h": format_12h,
-        "fiqh_times": results
+        "fiqh_times": results,
+        "hijri_date": hijri_date or {},
+        "gregorian_date": gregorian_date_info or {},
     }
 
 
@@ -625,21 +637,21 @@ async def get_hijri_date(
     try:
         import httpx
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Use the timings endpoint which returns Hijri date
+            # Use the gToH endpoint for direct conversion
+            day, month, year = date.split('-')
             response = await client.get(
-                "https://api.aladhan.com/v1/timings",
+                f"https://api.aladhan.com/v1/gToH",
                 params={
-                    "latitude": 21.4225,  # Mecca coordinates
-                    "longitude": 39.8262,
-                    "method": 4,  # Umm al-Qura
-                    "date": date
+                    "date": int(day),
+                    "month": int(month),
+                    "year": int(year)
                 }
             )
             
             if response.status_code == 200:
                 data = response.json()
-                hijri = data.get("data", {}).get("date", {}).get("hijri", {})
-                gregorian = data.get("data", {}).get("date", {}).get("gregorian", {})
+                hijri = data.get("data", {}).get("hijri", {})
+                gregorian = data.get("data", {}).get("gregorian", {})
                 
                 return {
                     "gregorian_date": date,
@@ -655,8 +667,58 @@ async def get_hijri_date(
     except Exception as e:
         logger.error(f"Failed to fetch Hijri date: {e}")
     
-    # Fallback: Calculate approximate Hijri date
-    return {"error": "Could not fetch Hijri date", "gregorian_date": date}
+    # Fallback: Calculate approximate Hijri date using known reference
+    # Reference: 1 Ramadan 1447 = February 18, 2026 (Pakistan moon sighting)
+    try:
+        from datetime import datetime as dt
+        day, month, year = map(int, date.split('-'))
+        gregorian_date = dt(year, month, day)
+        
+        # Reference date: February 18, 2026 = 1 Ramadan 1447 (Pakistan)
+        ref_date = dt(2026, 2, 18)
+        days_diff = (gregorian_date - ref_date).days
+        
+        # Start from 1 Ramadan 1447
+        hijri_year = 1447
+        hijri_month = 9  # Ramadan
+        hijri_day = 1 + days_diff
+        
+        # Handle day overflow/underflow
+        hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+                        'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+                        'Ramadan', 'Shawwal', 'Dhul Qadah', 'Dhul Hijjah']
+        
+        # Simple adjustment for days in month (approx 29-30 days per month)
+        while hijri_day > 30:
+            hijri_day -= 30
+            hijri_month += 1
+            if hijri_month > 12:
+                hijri_month = 1
+                hijri_year += 1
+        
+        while hijri_day < 1:
+            hijri_month -= 1
+            if hijri_month < 1:
+                hijri_month = 12
+                hijri_year -= 1
+            hijri_day += 30
+        
+        hijri_month_name = hijri_months[hijri_month - 1]
+        
+        return {
+            "gregorian_date": date,
+            "hijri_date": f"{hijri_day}-{hijri_month}-{hijri_year}",
+            "hijri_day": str(hijri_day),
+            "hijri_month": hijri_month_name,
+            "hijri_month_number": str(hijri_month),
+            "hijri_year": str(hijri_year),
+            "hijri_format": f"{hijri_day} {hijri_month_name} {hijri_year}",
+            "gregorian_format": f"{day} {gregorian_date.strftime('%B')} {year}",
+            "weekday_en": gregorian_date.strftime("%A"),
+        }
+    except Exception as e:
+        logger.error(f"Failed to calculate fallback Hijri date: {e}")
+        return {"error": "Could not fetch Hijri date", "gregorian_date": date}
 
 
 # ============================================================================
@@ -726,6 +788,8 @@ async def get_prayer_times_by_coords(
         "iftar": prayer_times["iftar"],
         "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
         "is_derived": prayer_times.get("is_derived", False),
+        "hijri_date": prayer_times.get("hijri_date", {}),
+        "gregorian_date": prayer_times.get("gregorian_date", {}),
     }
     
     if debug:

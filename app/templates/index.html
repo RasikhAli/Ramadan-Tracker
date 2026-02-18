@@ -445,10 +445,10 @@
 
         <!-- Hijri Date Banner -->
         <div class="hijri-banner" id="hijriBanner">
-            <span class="ramadan-badge" id="ramadanBadge">🌙 Ramadan 1447</span>
-            <span class="hijri-date" id="hijriDate">Loading Hijri date...</span>
+            <span class="ramadan-badge" id="ramadanBadge" style="display:none;">🌙 Ramadan</span>
+            <span class="hijri-date" id="hijriDate">--</span>
             <span class="hijri-date-separator">|</span>
-            <span class="gregorian-date" id="gregorianDate"></span>
+            <span class="gregorian-date" id="gregorianDate">--</span>
         </div>
 
         <div class="location-banner" id="locationBanner">
@@ -773,7 +773,6 @@
             loadInitialData();
             detectLocation();
             updateCurrentDate();
-            fetchHijriDate(browserTimezone);
             initLanguage();
         });
 
@@ -1040,6 +1039,8 @@
                     lat: lat,
                     lon: lon,
                     calculation_method: calcMethod,
+                    hijri_date: data.hijri_date,
+                    gregorian_date: data.gregorian_date,
                     fiqh_times: {
                         hanafi: { ...data, fiqh_method: 'hanafi' },
                         shafi: { ...data, fiqh_method: 'shafi' },
@@ -1124,9 +1125,22 @@
             document.getElementById('locationBanner').classList.remove('hidden');
             document.getElementById('detectedLocation').textContent = `${data.city}, ${data.country}`;
 
-            // Update Hijri date with the city's timezone
-            if (data.timezone) {
-                fetchHijriDate(data.timezone);
+            // Update Hijri date from API response
+            if (data.hijri_date && data.hijri_date.format) {
+                document.getElementById('hijriDate').textContent = data.hijri_date.format;
+                
+                // Check if it's Ramadan (month 9)
+                if (data.hijri_date.month_number === '9' || data.hijri_date.month_number === 9) {
+                    document.getElementById('ramadanBadge').textContent = `🌙 Ramadan Day ${data.hijri_date.day}`;
+                    document.getElementById('ramadanBadge').style.display = 'inline-block';
+                } else {
+                    document.getElementById('ramadanBadge').style.display = 'none';
+                }
+            }
+
+            // Update Gregorian date from API response
+            if (data.gregorian_date && data.gregorian_date.format) {
+                document.getElementById('gregorianDate').textContent = data.gregorian_date.format;
             }
 
             const methodOrder = ['jaffari', 'hanafi', 'shafi'];

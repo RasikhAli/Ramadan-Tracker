@@ -165,6 +165,11 @@ class PrayerTimeService:
         
         timings = raw_data.get("data", {}).get("timings", {})
         meta = raw_data.get("data", {}).get("meta", {})
+        date_info = raw_data.get("data", {}).get("date", {})
+        
+        # Extract Hijri date information
+        hijri = date_info.get("hijri", {})
+        gregorian = date_info.get("gregorian", {})
         
         # Get Fajr and Maghrib times
         fajr_time = timings.get("Fajr", "")
@@ -210,6 +215,22 @@ class PrayerTimeService:
             "iftar": iftar_time,
             "iftar_12h": self.convert_to_12_hour(iftar_time),
             "is_derived": fiqh_method == "jaffari",
+            # Hijri date from API
+            "hijri_date": {
+                "date": hijri.get("date", ""),
+                "day": hijri.get("day", ""),
+                "month": hijri.get("month", {}).get("en", ""),
+                "month_number": hijri.get("month", {}).get("number", ""),
+                "year": hijri.get("year", ""),
+                "format": f"{hijri.get('day', '')} {hijri.get('month', {}).get('en', '')} {hijri.get('year', '')}",
+            },
+            "gregorian_date": {
+                "date": gregorian.get("date", ""),
+                "day": gregorian.get("day", ""),
+                "month": gregorian.get("month", {}).get("en", ""),
+                "year": gregorian.get("year", ""),
+                "format": f"{gregorian.get('day', '')} {gregorian.get('month', {}).get('en', '')} {gregorian.get('year', '')}",
+            },
         }
         
         if include_debug:
