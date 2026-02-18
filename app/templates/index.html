@@ -648,6 +648,36 @@
 
         async function detectLocation() {
             document.getElementById('detectedLocation').textContent = 'Detecting...';
+            
+            // First try browser's Geolocation API for accurate user location
+            if (navigator.geolocation) {
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 300000 // 5 minutes cache
+                        });
+                    });
+                    
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    // Send coordinates to backend to find closest city
+                    const res = await fetch(`/api/detect-location-from-coords?lat=${lat}&lon=${lon}&browser_timezone=${encodeURIComponent(browserTimezone)}`);
+                    const data = await res.json();
+                    
+                    if (data.detected_city) {
+                        document.getElementById('detectedLocation').textContent = `${data.detected_city}, ${data.detected_country}`;
+                        await fetchAllFiqhTimesForCity(data.detected_city, data.detected_country);
+                        return;
+                    }
+                } catch (geoError) {
+                    console.log('Browser geolocation failed, falling back to timezone detection:', geoError.message);
+                }
+            }
+            
+            // Fallback to timezone-based detection
             try {
                 const res = await fetch(`/api/detect-location?browser_timezone=${encodeURIComponent(browserTimezone)}`);
                 const data = await res.json();
@@ -823,33 +853,71 @@
 
         function updateCountdown() {
             if (!allFiqhData) return;
+            
+            // Get current time in the city's timezone
+            const cityTimezone = allFiqhData.timezone;
             const now = new Date();
+            
+            // Get current time in city's timezone using Intl API
+            const cityTimeStr = now.toLocaleString('en-US', { timeZone: cityTimezone });
+            const cityNow = new Date(cityTimeStr);
+            
             // Use methodOrder for consistent ordering: Jaffari, Hanafi, Shafi
             const methodOrder = ['jaffari', 'hanafi', 'shafi'];
+            
             methodOrder.forEach(k => {
                 const v = allFiqhData.fiqh_times[k];
                 if (!v) return;
-                const se = v.sehri_ends, ift = v.iftar_12h||v.iftar;
-                ['se','if'].forEach((type,i) => {
-                    const timeStr = i===0 ? se : ift;
-                    const parts = timeStr.split(':');
-                    if (parts.length < 2) return; // Skip invalid time
-                    const h = parseInt(parts[0], 10);
-                    const m = parseInt(parts[1], 10);
-                    if (isNaN(h) || isNaN(m)) return; // Skip NaN values
-                    const d = new Date(now); d.setHours(h,m,0,0);
-                    if (d<now) d.setDate(d.getDate()+1);
-                    const diff = d - now;
+                
+                // Use ISO datetime strings from API if available (more accurate)
+                const fajrDatetime = v.fajr_datetime;
+                const maghribDatetime = v.maghrib_datetime;
+                
+                ['se','if'].forEach((type, i) => {
                     const el = document.getElementById(`timer-${k}-${type}`);
-                    if (el) {
-                        if (diff <= 0) { el.textContent = '00:00:00:00'; return; }
-                        const pad = n=>String(n).padStart(2,'0');
-                        const days = Math.floor(diff/(1000*60*60*24));
-                        const hrs = Math.floor((diff%(1000*60*60*24))/(1000*60*60));
-                        const mins = Math.floor((diff%(1000*60*60))/(1000*60));
-                        const secs = Math.floor((diff%(1000*60))/1000);
-                        el.textContent = `${pad(days)}:${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+                    if (!el) return;
+                    
+                    let targetTime;
+                    
+                    // Use ISO datetime if available
+                    if (type === 'se' && fajrDatetime) {
+                        targetTime = new Date(fajrDatetime);
+                    } else if (type === 'if' && maghribDatetime) {
+                        targetTime = new Date(maghribDatetime);
+                    } else {
+                        // Fallback to time string parsing
+                        const timeStr = i === 0 ? v.sehri_ends : (v.iftar_12h || v.iftar);
+                        const parts = timeStr.split(':');
+                        if (parts.length < 2) return;
+                        
+                        const h = parseInt(parts[0], 10);
+                        const m = parseInt(parts[1], 10);
+                        if (isNaN(h) || isNaN(m)) return;
+                        
+                        // Create target time in city's timezone
+                        targetTime = new Date(cityNow);
+                        targetTime.setHours(h, m, 0, 0);
                     }
+                    
+                    // If target time has passed, set to next day
+                    if (targetTime <= now) {
+                        targetTime.setDate(targetTime.getDate() + 1);
+                    }
+                    
+                    const diff = targetTime - now;
+                    
+                    if (diff <= 0) {
+                        el.textContent = '00:00:00:00';
+                        return;
+                    }
+                    
+                    const pad = n => String(n).padStart(2, '0');
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hrs = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    el.textContent = `${pad(days)}:${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
                 });
             });
         }
