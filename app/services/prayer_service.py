@@ -128,7 +128,7 @@ class PrayerTimeService:
         date: str,
         timezone: str,
         fiqh_method: str,
-        calculation_method: str = 'karachi',
+        calculation_method: str = 'mwl',
         include_debug: bool = False
     ) -> Dict[str, Any]:
         """

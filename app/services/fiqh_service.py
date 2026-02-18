@@ -111,11 +111,11 @@ class FiqhService:
     @staticmethod
     def get_calculation_method_id(method_key: str) -> int:
         """Get AlAdhan API method ID for a calculation method key."""
-        method = CALCULATION_METHODS.get(method_key, CALCULATION_METHODS['karachi'])
+        method = CALCULATION_METHODS.get(method_key, CALCULATION_METHODS['mwl'])
         return method['id']
     
     @staticmethod
-    def get_fiqh_method_config(fiqh_method: str, calculation_method: str = 'karachi') -> Dict[str, Any]:
+    def get_fiqh_method_config(fiqh_method: str, calculation_method: str = 'mwl') -> Dict[str, Any]:
         """
         Get AlAdhan API configuration for a fiqh method.
         

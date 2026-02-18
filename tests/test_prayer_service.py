@@ -19,19 +19,19 @@ class TestPrayerTimeService:
     def test_get_fiqh_config_hanafi(self):
         """Test Hanafi fiqh configuration."""
         method, school = PrayerTimeService.get_fiqh_config("hanafi")
-        assert method == ALADHAN_METHODS["karachi"]  # 1
+        assert method == ALADHAN_METHODS["mwl"]  # 3
         assert school == ALADHAN_SCHOOLS["hanafi"]   # 1
     
     def test_get_fiqh_config_shafi(self):
         """Test Shafi fiqh configuration."""
         method, school = PrayerTimeService.get_fiqh_config("shafi")
-        assert method == ALADHAN_METHODS["karachi"]  # 1
+        assert method == ALADHAN_METHODS["mwl"]  # 3
         assert school == ALADHAN_SCHOOLS["shafi"]    # 0
     
     def test_get_fiqh_config_default(self):
         """Test default (unknown) fiqh configuration defaults to Shafi."""
         method, school = PrayerTimeService.get_fiqh_config("unknown")
-        assert method == ALADHAN_METHODS["karachi"]  # 1
+        assert method == ALADHAN_METHODS["mwl"]  # 3
         assert school == ALADHAN_SCHOOLS["shafi"]    # 0
     
     def test_convert_to_12_hour_morning(self):

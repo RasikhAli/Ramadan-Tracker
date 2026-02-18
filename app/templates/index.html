@@ -491,7 +491,7 @@
                         <select id="calculationMethod">
                             <option value="isna">ISNA</option>
                             <option value="karachi">Karachi</option>
-                            <option value="mwl">Muslim World League</option>
+                            <option value="mwl" selected>Muslim World League</option>
                             <option value="umm_al_qura">Umm al-Qura (Makkah)</option>
                         </select>
                     </div>
@@ -522,7 +522,7 @@
                         <select id="calcMethodCoords">
                             <option value="isna">ISNA</option>
                             <option value="karachi">Karachi</option>
-                            <option value="mwl">Muslim World League</option>
+                            <option value="mwl" selected>Muslim World League</option>
                             <option value="umm_al_qura">Umm al-Qura (Makkah)</option>
                         </select>
                     </div>
@@ -642,7 +642,7 @@
         // State
         let countriesData = {}, citiesData = {}, allFiqhData = null, countdownInterval = null;
         let is12HourFormat = true, browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        let currentLat = null, currentLon = null, currentCalcMethod = 'karachi';
+        let currentLat = null, currentLon = null, currentCalcMethod = 'mwl';
         let notificationEnabled = false;
 
         // Translations
