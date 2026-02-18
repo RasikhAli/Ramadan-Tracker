@@ -1,3 +1,18 @@
+"""
+Ramadan Countdown FastAPI Application
+Version 4.0.0 - Refactored with Service Layer Architecture
+
+Key Features:
+- Browser geolocation for user location detection (not server location)
+- Offline city data from GeoNames (cities with population > 15000)
+- Jaffari times derived from Hanafi using fixed offsets
+- Proper timezone handling for all countdown calculations
+
+Jaffari Derivation Rule:
+- Jaffari Sehri = Hanafi Fajr - 10 minutes
+- Jaffari Iftar = Hanafi Maghrib + 10 minutes
+- These are fixed offsets, NOT fetched from API
+"""
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -5,20 +20,32 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import pytz
-import httpx
-import json
 import logging
 from typing import Optional, Dict, Any, List
-from app.data.cities import COUNTRIES_AND_CITIES, TIMEZONES, FIQH_METHODS, get_timezone_for_coordinates
+
+from app.services import (
+    city_service,
+    prayer_service,
+    fiqh_service,
+    countdown_service,
+    JAFFARI_SEHRI_OFFSET_MINUTES,
+    JAFFARI_IFTAR_OFFSET_MINUTES,
+)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# App metadata
+APP_VERSION = "4.0.0"
 
 app = FastAPI(
     title="Ramadan Countdown API",
     description="Dynamic Ramadan countdown for Sehri and Iftar times with auto-detection",
-    version="3.0.0"
+    version=APP_VERSION
 )
 
 # CORS middleware
@@ -36,284 +63,13 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Templates
 templates = Jinja2Templates(directory="app/templates")
 
-# Simple in-memory cache
-prayer_time_cache: Dict[str, Any] = {}
+# Fiqh methods available
+FIQH_METHODS = ["hanafi", "shafi", "jaffari"]
 
-# Debug mode flag
-DEBUG_MODE = True
 
-def get_cache_key(lat: float, lon: float, date: str, method: int, school: int) -> str:
-    """Generate cache key for prayer times"""
-    return f"{lat},{lon},{date},{method},{school}"
-
-def convert_to_12_hour(time_24: str) -> str:
-    """Convert 24-hour time to 12-hour format"""
-    if not time_24:
-        return "--:--"
-    try:
-        parts = time_24.split(':')
-        hours = int(parts[0])
-        minutes = parts[1] if len(parts) > 1 else "00"
-        am_pm = "AM" if hours < 12 else "PM"
-        hours_12 = hours if hours <= 12 else hours - 12
-        if hours_12 == 0:
-            hours_12 = 12
-        return f"{hours_12}:{minutes} {am_pm}"
-    except:
-        return time_24
-
-def parse_time_to_datetime(time_str: str, date_str: str, timezone_str: str) -> Optional[datetime]:
-    """
-    Parse a time string (HH:MM) into a datetime object in the specified timezone.
-    
-    Args:
-        time_str: Time in HH:MM format
-        date_str: Date in DD-MM-YYYY format
-        timezone_str: Timezone string (e.g., "Asia/Karachi")
-    
-    Returns:
-        datetime object in the specified timezone or None if parsing fails
-    """
-    try:
-        tz = pytz.timezone(timezone_str)
-        day, month, year = map(int, date_str.split('-'))
-        hours, minutes = map(int, time_str.split(':'))
-        
-        dt = datetime(year, month, day, hours, minutes, 0)
-        return tz.localize(dt)
-    except Exception as e:
-        logger.error(f"Error parsing time: {e}")
-        return None
-
-def calculate_countdown(target_time: datetime, current_time: datetime) -> Dict[str, int]:
-    """
-    Calculate countdown between current time and target time.
-    Pure function - no side effects.
-    
-    Args:
-        target_time: Target datetime (timezone-aware)
-        current_time: Current datetime (timezone-aware, same timezone)
-    
-    Returns:
-        Dictionary with hours, minutes, seconds remaining
-    """
-    if target_time <= current_time:
-        # Target has passed, calculate for next day
-        target_time += timedelta(days=1)
-    
-    diff = target_time - current_time
-    total_seconds = int(diff.total_seconds())
-    
-    if total_seconds < 0:
-        total_seconds = 0
-    
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    
-    return {
-        "hours": hours,
-        "minutes": minutes,
-        "seconds": seconds,
-        "total_seconds": total_seconds
-    }
-
-async def fetch_prayer_times(
-    lat: float, 
-    lon: float, 
-    date: str, 
-    timezone: str, 
-    fiqh_method: str,
-    debug: bool = False
-) -> Dict[str, Any]:
-    """
-    Fetch prayer times from AlAdhan API.
-    
-    AlAdhan API Parameters:
-    - method: Calculation method
-      - 0 = Shia Ithna-Ashari, Leva Institute, Qum (Jafari)
-      - 1 = University of Islamic Sciences, Karachi
-      - 2 = Islamic Society of North America (ISNA)
-      - 3 = Muslim World League
-      - 4 = Umm Al-Qura University, Makkah
-      - 5 = Egyptian General Authority of Survey
-      - 7 = Institute of Geophysics, University of Tehran
-      - 8 = Gulf Region
-      - 9 = Kuwait
-      - 10 = Qatar
-      - 11 = Majlis Ugama Islam Singapura, Singapore
-      - 12 = Union Organization islamic de France
-      - 13 = Diyanet İşleri Başkanlığı, Turkey
-      - 14 = Spiritual Administration of Muslims of Russia
-    
-    - school: Madhab (for Asr calculation)
-      - 0 = Shafi, Maliki, Hanbali (standard)
-      - 1 = Hanafi
-    
-    Sehri (Ends at Fajr):
-    - Use Fajr time directly from API
-    - No arbitrary subtraction
-    
-    Iftar (At Maghrib):
-    - Use Maghrib time directly from API
-    - No manual offsets
-    """
-    
-    # Determine calculation method and school based on fiqh
-    # For Jafari (Shia): method=0 (Jafari method), school doesn't matter for Asr
-    # For Hanafi: method=1 (Karachi), school=1 (Hanafi Asr)
-    # For Shafi/Maliki/Hanbali: method=1 (Karachi), school=0 (Shafi Asr)
-    
-    if fiqh_method == "jaffari":
-        # Jafari (Shia) method - uses Leva Institute calculations
-        method = 0  # Shia Ithna-Ashari, Leva Institute, Qum
-        school = 0  # School doesn't affect Jafari method
-    elif fiqh_method == "hanafi":
-        # Hanafi method - uses Karachi calculations with Hanafi Asr
-        method = 1  # University of Islamic Sciences, Karachi
-        school = 1  # Hanafi school for Asr
-    else:
-        # Shafi/Maliki/Hanbali - uses Karachi calculations with Shafi Asr
-        method = 1  # University of Islamic Sciences, Karachi
-        school = 0  # Shafi school for Asr
-    
-    cache_key = get_cache_key(lat, lon, date, method, school)
-    
-    # Check cache
-    if cache_key in prayer_time_cache:
-        cached_data = prayer_time_cache[cache_key]
-        if cached_data.get("date") == date:
-            logger.info(f"Using cached prayer times for {cache_key}")
-            return cached_data
-    
-    url = "https://api.aladhan.com/v1/timings"
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "method": method,
-        "school": school,
-        "date": date,
-        "timezone": timezone
-    }
-    
-    # Log API request parameters for debugging
-    logger.info(f"AlAdhan API Request - URL: {url}")
-    logger.info(f"AlAdhan API Request - Params: lat={lat}, lon={lon}, method={method}, school={school}, date={date}, timezone={timezone}")
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.get(url, params=params)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                if data.get("code") == 200:
-                    timings = data.get("data", {}).get("timings", {})
-                    date_info = data.get("data", {}).get("date", {})
-                    meta = data.get("data", {}).get("meta", {})
-                    
-                    # Log raw API response for debugging
-                    logger.info(f"AlAdhan API Response - Timings: {timings}")
-                    logger.info(f"AlAdhan API Response - Meta: {meta}")
-                    
-                    # Sehri ends at Fajr - use directly from API
-                    fajr_time = timings.get("Fajr", "")
-                    # Iftar is at Maghrib - use directly from API
-                    maghrib_time = timings.get("Maghrib", "")
-                    
-                    # Parse times to datetime for countdown calculations
-                    fajr_dt = parse_time_to_datetime(fajr_time, date, timezone)
-                    maghrib_dt = parse_time_to_datetime(maghrib_time, date, timezone)
-                    
-                    result = {
-                        "date": date,
-                        "timings": {
-                            "Fajr": fajr_time,
-                            "Sunrise": timings.get("Sunrise", ""),
-                            "Dhuhr": timings.get("Dhuhr", ""),
-                            "Asr": timings.get("Asr", ""),
-                            "Maghrib": maghrib_time,
-                            "Isha": timings.get("Isha", ""),
-                        },
-                        "timings_12h": {
-                            "Fajr": convert_to_12_hour(fajr_time),
-                            "Sunrise": convert_to_12_hour(timings.get("Sunrise", "")),
-                            "Dhuhr": convert_to_12_hour(timings.get("Dhuhr", "")),
-                            "Asr": convert_to_12_hour(timings.get("Asr", "")),
-                            "Maghrib": convert_to_12_hour(maghrib_time),
-                            "Isha": convert_to_12_hour(timings.get("Isha", "")),
-                        },
-                        "timezone": timezone,
-                        "lat": lat,
-                        "lon": lon,
-                        "fiqh_method": fiqh_method,
-                        "method": method,
-                        "school": school,
-                        "sehri_ends": fajr_time,
-                        "sehri_ends_12h": convert_to_12_hour(fajr_time),
-                        "iftar": maghrib_time,
-                        "iftar_12h": convert_to_12_hour(maghrib_time),
-                        "fajr_datetime": fajr_dt.isoformat() if fajr_dt else None,
-                        "maghrib_datetime": maghrib_dt.isoformat() if maghrib_dt else None,
-                    }
-                    
-                    # Add debug info if requested
-                    if debug or DEBUG_MODE:
-                        result["debug"] = {
-                            "api_url": url,
-                            "api_params": params,
-                            "raw_timings": timings,
-                            "meta": meta,
-                            "fajr_parsed": fajr_dt.isoformat() if fajr_dt else None,
-                            "maghrib_parsed": maghrib_dt.isoformat() if maghrib_dt else None,
-                        }
-                    
-                    # Cache the result
-                    prayer_time_cache[cache_key] = result
-                    
-                    return result
-                else:
-                    error_msg = data.get("data", "API returned error")
-                    logger.error(f"AlAdhan API Error: {error_msg}")
-                    raise HTTPException(status_code=400, detail=f"API returned error: {error_msg}")
-            else:
-                logger.error(f"AlAdhan API HTTP Error: {response.status_code}")
-                raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch prayer times: {response.status_code}")
-                
-    except httpx.RequestError as e:
-        logger.error(f"AlAdhan API Request Error: {str(e)}")
-        raise HTTPException(status_code=503, detail=f"API request failed: {str(e)}")
-    except Exception as e:
-        logger.error(f"Internal Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
-
-def find_closest_city(lat: float, lon: float) -> Optional[Dict[str, Any]]:
-    """Find the closest city from our database to the given coordinates"""
-    if lat == 0 and lon == 0:
-        return None
-    
-    min_distance = float('inf')
-    closest = None
-    
-    for country, country_data in COUNTRIES_AND_CITIES.items():
-        for city, city_data in country_data["cities"].items():
-            city_lat = city_data["lat"]
-            city_lon = city_data["lon"]
-            
-            # Calculate simple distance (not perfect but good enough)
-            distance = ((lat - city_lat) ** 2 + (lon - city_lon) ** 2) ** 0.5
-            
-            if distance < min_distance:
-                min_distance = distance
-                closest = {
-                    "city": city,
-                    "country": country,
-                    "lat": city_lat,
-                    "lon": city_lon,
-                    "timezone": city_data["timezone"]
-                }
-    
-    return closest
+# ============================================================================
+# Routes
+# ============================================================================
 
 @app.get("/")
 async def root():
@@ -321,26 +77,34 @@ async def root():
     from fastapi.requests import Request
     return templates.TemplateResponse("index.html", {"request": {}})
 
+
+# ============================================================================
+# Location Detection APIs
+# ============================================================================
+
 @app.get("/api/detect-location")
 async def detect_location(browser_timezone: Optional[str] = Query(None)):
-    """Auto-detect user location based on browser timezone (fallback when geolocation is not available)"""
+    """
+    Auto-detect user location based on browser timezone.
+    This is a fallback when geolocation is not available.
+    """
     browser_tz = browser_timezone or "UTC"
     
     # Try to find a city matching the browser timezone
-    for country, country_data in COUNTRIES_AND_CITIES.items():
-        for city, city_data in country_data["cities"].items():
-            if city_data["timezone"] == browser_tz:
-                return {
-                    "detected": True,
-                    "method": "timezone",
-                    "detected_city": city,
-                    "detected_country": country,
-                    "detected_lat": city_data["lat"],
-                    "detected_lon": city_data["lon"],
-                    "detected_timezone": city_data["timezone"],
-                    "browser_timezone": browser_tz,
-                    "message": f"Location detected from timezone: {browser_tz}"
-                }
+    city_match = city_service.find_city_by_timezone(browser_tz)
+    
+    if city_match:
+        return {
+            "detected": True,
+            "method": "timezone",
+            "detected_city": city_match["city"],
+            "detected_country": city_match["country"],
+            "detected_lat": city_match["lat"],
+            "detected_lon": city_match["lon"],
+            "detected_timezone": city_match["timezone"],
+            "browser_timezone": browser_tz,
+            "message": f"Location detected from timezone: {browser_tz}"
+        }
     
     # Return default if no match found
     return {
@@ -355,15 +119,19 @@ async def detect_location(browser_timezone: Optional[str] = Query(None)):
         "message": "Using default location"
     }
 
+
 @app.get("/api/detect-location-from-coords")
 async def detect_location_from_coords(
     lat: float = Query(...),
     lon: float = Query(...),
     browser_timezone: Optional[str] = Query(None)
 ):
-    """Detect user location from browser-provided coordinates (from Geolocation API)"""
+    """
+    Detect user location from browser-provided coordinates.
+    Uses the Geolocation API on the client side.
+    """
     # Find closest city from our database
-    closest_city = find_closest_city(lat, lon)
+    closest_city = city_service.find_closest_city(lat, lon)
     
     if closest_city:
         return {
@@ -382,20 +150,20 @@ async def detect_location_from_coords(
     
     # Fallback to timezone-based detection
     browser_tz = browser_timezone or "UTC"
-    for country, country_data in COUNTRIES_AND_CITIES.items():
-        for city, city_data in country_data["cities"].items():
-            if city_data["timezone"] == browser_tz:
-                return {
-                    "detected": True,
-                    "method": "timezone_fallback",
-                    "detected_city": city,
-                    "detected_country": country,
-                    "detected_lat": city_data["lat"],
-                    "detected_lon": city_data["lon"],
-                    "detected_timezone": city_data["timezone"],
-                    "browser_timezone": browser_tz,
-                    "message": f"Location detected from timezone: {browser_tz}"
-                }
+    city_match = city_service.find_city_by_timezone(browser_tz)
+    
+    if city_match:
+        return {
+            "detected": True,
+            "method": "timezone_fallback",
+            "detected_city": city_match["city"],
+            "detected_country": city_match["country"],
+            "detected_lat": city_match["lat"],
+            "detected_lon": city_match["lon"],
+            "detected_timezone": city_match["timezone"],
+            "browser_timezone": browser_tz,
+            "message": f"Location detected from timezone: {browser_tz}"
+        }
     
     # Return default if no match found
     return {
@@ -410,128 +178,119 @@ async def detect_location_from_coords(
         "message": "Using default location"
     }
 
+
+# ============================================================================
+# City Data APIs
+# ============================================================================
+
 @app.get("/api/countries")
 async def get_countries():
     """Get list of available countries sorted alphabetically"""
-    countries = sorted(list(COUNTRIES_AND_CITIES.keys()))
+    countries = city_service.get_countries()
     return {"countries": countries}
+
 
 @app.get("/api/cities/{country}")
 async def get_cities(country: str):
     """Get cities for a specific country sorted alphabetically"""
-    if country not in COUNTRIES_AND_CITIES:
+    cities = city_service.get_city_names_for_country(country)
+    
+    if not cities:
         raise HTTPException(status_code=404, detail="Country not found")
     
-    cities = sorted(list(COUNTRIES_AND_CITIES[country]["cities"].keys()))
     return {"cities": cities, "country": country}
+
 
 @app.get("/api/city-data")
 async def get_city_data(country: str = Query(...), city: str = Query(...)):
     """Get city coordinates and timezone"""
-    if country not in COUNTRIES_AND_CITIES:
-        raise HTTPException(status_code=404, detail="Country not found")
+    city_data = city_service.get_city_data(country, city)
     
-    if city not in COUNTRIES_AND_CITIES[country]["cities"]:
-        raise HTTPException(status_code=404, detail="City not found")
+    if not city_data:
+        raise HTTPException(status_code=404, detail="City or country not found")
     
-    return COUNTRIES_AND_CITIES[country]["cities"][city]
+    return city_data
 
-@app.get("/api/timezones")
-async def get_timezones():
-    """Get list of available timezones sorted alphabetically"""
-    return {"timezones": sorted(TIMEZONES)}
+
+@app.get("/api/search-city")
+async def search_city(query: str = Query(...)):
+    """Search for a city by name"""
+    results = city_service.search_cities(query, limit=20)
+    return {"results": results}
+
+
+@app.get("/api/datas")
+async def get_all_datas():
+    """Get all countries, cities data for initial load"""
+    data = city_service.get_all_data()
+    return {
+        "countries": data["countries"],
+        "cities_data": data["cities_data"]
+    }
+
+
+# ============================================================================
+# Fiqh Methods API
+# ============================================================================
 
 @app.get("/api/fiqh-methods")
 async def get_fiqh_methods():
-    """Get list of fiqh methods"""
-    return {"methods": FIQH_METHODS}
-
-@app.get("/api/prayer-times-all")
-async def get_all_fiqh_prayer_times(
-    country: str = Query(...),
-    city: str = Query(...),
-    date: Optional[str] = Query(None),
-    timezone: Optional[str] = Query(None),
-    format_12h: bool = Query(True),
-    debug: bool = Query(False)
-):
-    """Get prayer times for all fiqh methods"""
-    if country not in COUNTRIES_AND_CITIES:
-        raise HTTPException(status_code=404, detail="Country not found")
-    
-    if city not in COUNTRIES_AND_CITIES[country]["cities"]:
-        raise HTTPException(status_code=404, detail="City not found")
-    
-    city_data = COUNTRIES_AND_CITIES[country]["cities"][city]
-    lat = city_data["lat"]
-    lon = city_data["lon"]
-    default_tz = city_data["timezone"]
-    
-    tz = timezone if timezone else default_tz
-    
-    # Get date
-    if date is None:
-        now = datetime.now(pytz.timezone(tz))
-        date = now.strftime("%d-%m-%Y")
-    else:
-        try:
-            datetime.strptime(date, "%d-%m-%Y")
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format")
-    
-    # Fetch times for all three methods
-    results = {}
-    for method in ["hanafi", "jaffari", "shafi"]:
-        times = await fetch_prayer_times(lat, lon, date, tz, method, debug)
-        iftar_time = times.get("iftar", times["timings"]["Maghrib"])
-        iftar_12h = times.get("iftar_12h", convert_to_12_hour(iftar_time)) if format_12h else iftar_time
-        
-        results[method] = {
-            "fiqh_method": method,
-            "method_id": times.get("method"),
-            "school_id": times.get("school"),
-            "timings": times["timings"],
-            "timings_12h": times.get("timings_12h", {}),
-            "sehri_ends": times["timings"]["Fajr"],
-            "sehri_ends_12h": convert_to_12_hour(times["timings"]["Fajr"]) if format_12h else times["timings"]["Fajr"],
-            "iftar": iftar_time,
-            "iftar_12h": iftar_12h,
-            "fajr_datetime": times.get("fajr_datetime"),
-            "maghrib_datetime": times.get("maghrib_datetime"),
-        }
-        
-        if debug or DEBUG_MODE:
-            results[method]["debug"] = times.get("debug")
-    
+    """Get list of fiqh methods with descriptions"""
+    from app.services.fiqh_service import FiqhService, CALCULATION_METHODS
     return {
-        "country": country,
-        "city": city,
-        "date": date,
-        "timezone": tz,
-        "lat": lat,
-        "lon": lon,
-        "format_12h": format_12h,
-        "fiqh_times": results
+        "methods": FIQH_METHODS,
+        "descriptions": {
+            "hanafi": "Hanafi school with selected calculation method",
+            "shafi": "Shafi/Maliki/Hanbali school with selected calculation method",
+            "jaffari": "Jaffari (Shia) - Derived from Hanafi with fixed offsets"
+        },
+        "calculation_methods": CALCULATION_METHODS,
+        "jaffari_derivation": {
+            "note": "Jaffari times are derived from Hanafi times using fixed offsets",
+            "sehri_offset_minutes": JAFFARI_SEHRI_OFFSET_MINUTES,
+            "iftar_offset_minutes": JAFFARI_IFTAR_OFFSET_MINUTES,
+            "formula": {
+                "jaffari_sehri": "Hanafi Fajr - 10 minutes",
+                "jaffari_iftar": "Hanafi Maghrib + 10 minutes"
+            }
+        }
     }
+
+
+# ============================================================================
+# Prayer Times APIs
+# ============================================================================
 
 @app.get("/api/prayer-times")
 async def get_prayer_times(
     country: str = Query(...),
     city: str = Query(...),
     fiqh_method: str = Query("hanafi"),
+    calculation_method: str = Query("karachi"),
     date: Optional[str] = Query(None),
     timezone: Optional[str] = Query(None),
     format_12h: bool = Query(True),
     debug: bool = Query(False)
 ):
-    """Get prayer times for a specific city and date"""
-    if country not in COUNTRIES_AND_CITIES:
-        raise HTTPException(status_code=404, detail="Country not found")
+    """
+    Get prayer times for a specific city and date.
     
-    if city not in COUNTRIES_AND_CITIES[country]["cities"]:
-        raise HTTPException(status_code=404, detail="City not found")
+    For Jaffari method:
+    - Times are derived from Hanafi using fixed offsets
+    - Sehri = Hanafi Fajr - 10 minutes
+    - Iftar = Hanafi Maghrib + 10 minutes
     
-    city_data = COUNTRIES_AND_CITIES[country]["cities"][city]
+    Calculation Methods:
+    - mwl: Muslim World League
+    - karachi: University of Islamic Sciences, Karachi
+    - umm_al_qura: Umm al-Qura University, Makkah
+    - isna: Islamic Society of North America
+    """
+    # Get city data
+    city_data = city_service.get_city_data(country, city)
+    if not city_data:
+        raise HTTPException(status_code=404, detail="City or country not found")
+    
     lat = city_data["lat"]
     lon = city_data["lon"]
     default_tz = city_data["timezone"]
@@ -539,9 +298,9 @@ async def get_prayer_times(
     # Use provided timezone or default
     tz = timezone if timezone else default_tz
     
-    # Get date (default to today)
+    # Get date (default to today in city timezone)
     if date is None:
-        now = datetime.now(pytz.timezone(tz))
+        now = countdown_service.get_current_time_in_timezone(tz)
         date = now.strftime("%d-%m-%Y")
     else:
         # Validate date format
@@ -552,25 +311,22 @@ async def get_prayer_times(
     
     # Validate fiqh method
     if fiqh_method not in FIQH_METHODS:
-        raise HTTPException(status_code=400, detail="Invalid fiqh method")
+        raise HTTPException(status_code=400, detail=f"Invalid fiqh method. Use one of: {FIQH_METHODS}")
     
     # Fetch prayer times
-    prayer_times = await fetch_prayer_times(lat, lon, date, tz, fiqh_method, debug)
-    
-    # Calculate Sehri and Iftar
-    fajr = prayer_times["timings"]["Fajr"]
-    maghrib = prayer_times["timings"]["Maghrib"]
-    
-    # Sehri ends at Fajr time
-    sehri_end = fajr
-    # Iftar is at Maghrib time  
-    iftar = maghrib
-    
-    # Convert to 12-hour format if requested
-    sehri_end_12h = convert_to_12_hour(sehri_end) if format_12h else sehri_end
-    iftar_12h = convert_to_12_hour(iftar) if format_12h else iftar
-    
-    timings_12h = prayer_times.get("timings_12h", {}) if format_12h else prayer_times.get("timings", {})
+    try:
+        prayer_times = await prayer_service.get_prayer_times(
+            lat=lat,
+            lon=lon,
+            date=date,
+            timezone=tz,
+            fiqh_method=fiqh_method,
+            calculation_method=calculation_method,
+            include_debug=debug
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch prayer times: {e}")
+        raise HTTPException(status_code=503, detail=f"Failed to fetch prayer times: {str(e)}")
     
     result = {
         "country": country,
@@ -580,43 +336,108 @@ async def get_prayer_times(
         "lat": lat,
         "lon": lon,
         "fiqh_method": fiqh_method,
+        "calculation_method": calculation_method,
         "method": prayer_times.get("method"),
         "school": prayer_times.get("school"),
         "format_12h": format_12h,
         "coordinates": {"lat": lat, "lon": lon},
         "timings": prayer_times["timings"],
-        "timings_12h": timings_12h,
-        "sehri_ends": sehri_end,
-        "sehri_ends_12h": sehri_end_12h,
-        "iftar": iftar,
-        "iftar_12h": iftar_12h,
-        "fajr_datetime": prayer_times.get("fajr_datetime"),
-        "maghrib_datetime": prayer_times.get("maghrib_datetime"),
+        "timings_12h": prayer_times.get("timings_12h", {}) if format_12h else prayer_times.get("timings", {}),
+        "sehri_ends": prayer_times["sehri_ends"],
+        "sehri_ends_12h": prayer_times["sehri_ends_12h"] if format_12h else prayer_times["sehri_ends"],
+        "iftar": prayer_times["iftar"],
+        "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
+        "is_derived": prayer_times.get("is_derived", False),
     }
     
-    if debug or DEBUG_MODE:
+    if debug:
         result["debug"] = prayer_times.get("debug")
     
     return result
 
-@app.get("/api/current-time")
-async def get_current_time(timezone: Optional[str] = Query(None)):
-    """Get current time in specified timezone"""
-    if timezone is None:
-        return {"current_time": datetime.now().isoformat(), "timezone": "UTC", "formatted_12h": datetime.now().strftime("%I:%M:%S %p")}
+
+@app.get("/api/prayer-times-all")
+async def get_all_fiqh_prayer_times(
+    country: str = Query(...),
+    city: str = Query(...),
+    calculation_method: str = Query("karachi"),
+    date: Optional[str] = Query(None),
+    timezone: Optional[str] = Query(None),
+    format_12h: bool = Query(True),
+    debug: bool = Query(False)
+):
+    """Get prayer times for all fiqh methods"""
+    # Get city data
+    city_data = city_service.get_city_data(country, city)
+    if not city_data:
+        raise HTTPException(status_code=404, detail="City or country not found")
     
-    try:
-        tz = pytz.timezone(timezone)
-        current_time = datetime.now(tz)
-        return {
-            "current_time": current_time.isoformat(),
-            "timezone": timezone,
-            "formatted": current_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "formatted_12h": current_time.strftime("%I:%M:%S %p"),
-            "timestamp": current_time.timestamp()
-        }
-    except pytz.UnknownTimeZoneError:
-        raise HTTPException(status_code=400, detail="Invalid timezone")
+    lat = city_data["lat"]
+    lon = city_data["lon"]
+    default_tz = city_data["timezone"]
+    
+    tz = timezone if timezone else default_tz
+    
+    # Get date
+    if date is None:
+        now = countdown_service.get_current_time_in_timezone(tz)
+        date = now.strftime("%d-%m-%Y")
+    else:
+        try:
+            datetime.strptime(date, "%d-%m-%Y")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+    
+    # Fetch times for all three methods
+    results = {}
+    for method in FIQH_METHODS:
+        try:
+            times = await prayer_service.get_prayer_times(
+                lat=lat,
+                lon=lon,
+                date=date,
+                timezone=tz,
+                fiqh_method=method,
+                calculation_method=calculation_method,
+                include_debug=debug
+            )
+            
+            results[method] = {
+                "fiqh_method": method,
+                "method_id": times.get("method"),
+                "school_id": times.get("school"),
+                "timings": times["timings"],
+                "timings_12h": times.get("timings_12h", {}),
+                "sehri_ends": times["sehri_ends"],
+                "sehri_ends_12h": times["sehri_ends_12h"] if format_12h else times["sehri_ends"],
+                "iftar": times["iftar"],
+                "iftar_12h": times["iftar_12h"] if format_12h else times["iftar"],
+                "is_derived": times.get("is_derived", False),
+            }
+            
+            if debug:
+                results[method]["debug"] = times.get("debug")
+                
+        except Exception as e:
+            logger.error(f"Failed to fetch {method} times: {e}")
+            results[method] = {"error": str(e)}
+    
+    return {
+        "country": country,
+        "city": city,
+        "date": date,
+        "timezone": tz,
+        "lat": lat,
+        "lon": lon,
+        "calculation_method": calculation_method,
+        "format_12h": format_12h,
+        "fiqh_times": results
+    }
+
+
+# ============================================================================
+# Countdown API
+# ============================================================================
 
 @app.get("/api/countdown")
 async def get_countdown(
@@ -628,14 +449,16 @@ async def get_countdown(
     """
     Get countdown to next Sehri or Iftar.
     Uses proper timezone handling for accurate countdown.
+    
+    For Jaffari method:
+    - Sehri countdown uses derived time (Hanafi Fajr - 10 min)
+    - Iftar countdown uses derived time (Hanafi Maghrib + 10 min)
     """
-    if country not in COUNTRIES_AND_CITIES:
-        raise HTTPException(status_code=404, detail="Country not found")
+    # Get city data
+    city_data = city_service.get_city_data(country, city)
+    if not city_data:
+        raise HTTPException(status_code=404, detail="City or country not found")
     
-    if city not in COUNTRIES_AND_CITIES[country]["cities"]:
-        raise HTTPException(status_code=404, detail="City not found")
-    
-    city_data = COUNTRIES_AND_CITIES[country]["cities"][city]
     lat = city_data["lat"]
     lon = city_data["lon"]
     default_tz = city_data["timezone"]
@@ -643,49 +466,73 @@ async def get_countdown(
     tz = timezone if timezone else default_tz
     
     # Get today's date in city timezone
-    tz_obj = pytz.timezone(tz)
-    now = datetime.now(tz_obj)
+    now = countdown_service.get_current_time_in_timezone(tz)
     date = now.strftime("%d-%m-%Y")
     
     # Fetch prayer times
-    prayer_times = await fetch_prayer_times(lat, lon, date, tz, fiqh_method)
+    try:
+        prayer_times = await prayer_service.get_prayer_times(
+            lat=lat,
+            lon=lon,
+            date=date,
+            timezone=tz,
+            fiqh_method=fiqh_method
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch prayer times for countdown: {e}")
+        raise HTTPException(status_code=503, detail=f"Failed to fetch prayer times: {str(e)}")
     
-    fajr_time = prayer_times["timings"]["Fajr"]
-    maghrib_time = prayer_times["timings"]["Maghrib"]
+    # Get Sehri and Iftar times (already derived for Jaffari)
+    sehri_time = prayer_times["sehri_ends"]
+    iftar_time = prayer_times["iftar"]
     
     # Parse times to datetime
-    fajr_dt = parse_time_to_datetime(fajr_time, date, tz)
-    maghrib_dt = parse_time_to_datetime(maghrib_time, date, tz)
+    sehri_dt = countdown_service.parse_time_to_datetime(sehri_time, date, tz)
+    iftar_dt = countdown_service.parse_time_to_datetime(iftar_time, date, tz)
     
-    if not fajr_dt or not maghrib_dt:
+    if not sehri_dt or not iftar_dt:
         raise HTTPException(status_code=500, detail="Failed to parse prayer times")
     
     # Determine next event
     current_time = now
     
-    # Check if we're before Fajr
-    if current_time < fajr_dt:
+    # Check if we're before Sehri
+    if current_time < sehri_dt:
         next_event = "sehri"
-        target_time = fajr_dt
-        event_name = "Sehri Ends (Fajr)"
-    # Check if we're between Fajr and Maghrib
-    elif current_time < maghrib_dt:
+        target_time = sehri_dt
+        event_name = "Sehri Ends"
+    # Check if we're between Sehri and Iftar
+    elif current_time < iftar_dt:
         next_event = "iftar"
-        target_time = maghrib_dt
-        event_name = "Iftar (Maghrib)"
-    # After Maghrib, countdown to next day's Sehri
+        target_time = iftar_dt
+        event_name = "Iftar"
+    # After Iftar, countdown to next day's Sehri
     else:
         next_event = "sehri"
-        # Get tomorrow's Fajr
+        # Get tomorrow's date
         tomorrow = now + timedelta(days=1)
         tomorrow_date = tomorrow.strftime("%d-%m-%Y")
-        tomorrow_prayer = await fetch_prayer_times(lat, lon, tomorrow_date, tz, fiqh_method)
-        tomorrow_fajr = tomorrow_prayer["timings"]["Fajr"]
-        target_time = parse_time_to_datetime(tomorrow_fajr, tomorrow_date, tz)
-        event_name = "Sehri Ends (Fajr)"
+        
+        # Fetch tomorrow's prayer times
+        try:
+            tomorrow_prayer = await prayer_service.get_prayer_times(
+                lat=lat,
+                lon=lon,
+                date=tomorrow_date,
+                timezone=tz,
+                fiqh_method=fiqh_method
+            )
+            tomorrow_sehri = tomorrow_prayer["sehri_ends"]
+            target_time = countdown_service.parse_time_to_datetime(tomorrow_sehri, tomorrow_date, tz)
+        except Exception as e:
+            logger.warning(f"Failed to fetch tomorrow's times, using approximation: {e}")
+            # Fallback: add 24 hours to today's Sehri
+            target_time = sehri_dt + timedelta(days=1)
+        
+        event_name = "Sehri Ends"
     
     # Calculate countdown
-    countdown = calculate_countdown(target_time, current_time)
+    countdown = countdown_service.calculate_countdown(target_time, current_time)
     
     return {
         "next_event": next_event,
@@ -695,41 +542,193 @@ async def get_countdown(
         "current_time": current_time.isoformat(),
         "current_time_12h": current_time.strftime("%I:%M:%S %p"),
         "countdown": countdown,
+        "countdown_formatted": countdown_service.format_countdown(countdown),
         "timezone": tz,
         "city": city,
         "country": country,
-        "fiqh_method": fiqh_method
+        "fiqh_method": fiqh_method,
+        "is_derived": prayer_times.get("is_derived", False)
     }
 
-@app.get("/api/search-city")
-async def search_city(query: str = Query(...)):
-    """Search for a city by name"""
-    query_lower = query.lower()
-    results = []
-    
-    for country, country_data in COUNTRIES_AND_CITIES.items():
-        for city, city_data in country_data["cities"].items():
-            if query_lower in city.lower():
-                results.append({
-                    "city": city,
-                    "country": country,
-                    "lat": city_data["lat"],
-                    "lon": city_data["lon"],
-                    "timezone": city_data["timezone"]
-                })
-    
-    return {"results": results[:20]}  # Limit to 20 results
 
-@app.get("/api/datas")
-async def get_all_datas():
-    """Get all countries, cities data, and timezones for initial load"""
-    return {
-        "countries": sorted(list(COUNTRIES_AND_CITIES.keys())),
-        "cities_data": COUNTRIES_AND_CITIES,
-        "timezones": sorted(TIMEZONES)
-    }
+# ============================================================================
+# Time APIs
+# ============================================================================
+
+@app.get("/api/current-time")
+async def get_current_time(timezone: Optional[str] = Query(None)):
+    """Get current time in specified timezone"""
+    if timezone is None:
+        return {
+            "current_time": datetime.now().isoformat(),
+            "timezone": "UTC",
+            "formatted_12h": datetime.now().strftime("%I:%M:%S %p")
+        }
+    
+    try:
+        current_time = countdown_service.get_current_time_in_timezone(timezone)
+        return {
+            "current_time": current_time.isoformat(),
+            "timezone": timezone,
+            "formatted": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "formatted_12h": current_time.strftime("%I:%M:%S %p"),
+            "timestamp": current_time.timestamp()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid timezone: {str(e)}")
+
+
+# ============================================================================
+# Health Check
+# ============================================================================
 
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "version": "3.0.0"}
+    return {
+        "status": "healthy",
+        "version": APP_VERSION,
+        "services": {
+            "city_service": "ok" if city_service.cities_data else "no_data",
+            "prayer_service": "ok",
+            "fiqh_service": "ok",
+            "countdown_service": "ok"
+        },
+        "jaffari_derivation": {
+            "enabled": True,
+            "sehri_offset_minutes": JAFFARI_SEHRI_OFFSET_MINUTES,
+            "iftar_offset_minutes": JAFFARI_IFTAR_OFFSET_MINUTES
+        }
+    }
+
+
+# ============================================================================
+# Hijri Date API
+# ============================================================================
+
+@app.get("/api/hijri-date")
+async def get_hijri_date(
+    date: Optional[str] = Query(None),
+    timezone: Optional[str] = Query(None)
+):
+    """
+    Get Hijri date for a given Gregorian date.
+    Uses AlAdhan API for accurate conversion.
+    """
+    # Get current date in timezone if not provided
+    if date is None:
+        tz = timezone or "UTC"
+        now = countdown_service.get_current_time_in_timezone(tz)
+        date = now.strftime("%d-%m-%Y")
+    
+    # Call AlAdhan API for Hijri date
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Use the timings endpoint which returns Hijri date
+            response = await client.get(
+                "https://api.aladhan.com/v1/timings",
+                params={
+                    "latitude": 21.4225,  # Mecca coordinates
+                    "longitude": 39.8262,
+                    "method": 4,  # Umm al-Qura
+                    "date": date
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                hijri = data.get("data", {}).get("date", {}).get("hijri", {})
+                gregorian = data.get("data", {}).get("date", {}).get("gregorian", {})
+                
+                return {
+                    "gregorian_date": date,
+                    "hijri_date": hijri.get("date", ""),
+                    "hijri_day": hijri.get("day", ""),
+                    "hijri_month": hijri.get("month", {}).get("en", ""),
+                    "hijri_month_number": hijri.get("month", {}).get("number", ""),
+                    "hijri_year": hijri.get("year", ""),
+                    "hijri_format": f"{hijri.get('day', '')} {hijri.get('month', {}).get('en', '')} {hijri.get('year', '')}",
+                    "gregorian_format": f"{gregorian.get('day', '')} {gregorian.get('month', {}).get('en', '')} {gregorian.get('year', '')}",
+                    "weekday_en": hijri.get("weekday", {}).get("en", ""),
+                }
+    except Exception as e:
+        logger.error(f"Failed to fetch Hijri date: {e}")
+    
+    # Fallback: Calculate approximate Hijri date
+    return {"error": "Could not fetch Hijri date", "gregorian_date": date}
+
+
+# ============================================================================
+# Manual Coordinates API
+# ============================================================================
+
+@app.get("/api/prayer-times-by-coords")
+async def get_prayer_times_by_coords(
+    lat: float = Query(..., description="Latitude"),
+    lon: float = Query(..., description="Longitude"),
+    fiqh_method: str = Query("hanafi"),
+    calculation_method: str = Query("karachi"),
+    date: Optional[str] = Query(None),
+    timezone: Optional[str] = Query(None),
+    format_12h: bool = Query(True),
+    debug: bool = Query(False)
+):
+    """
+    Get prayer times for specific coordinates (manual lat/long input).
+    Useful for locations not in the city database.
+    """
+    # Default timezone to UTC if not provided
+    tz = timezone or "UTC"
+    
+    # Get date (default to today)
+    if date is None:
+        now = countdown_service.get_current_time_in_timezone(tz)
+        date = now.strftime("%d-%m-%Y")
+    else:
+        try:
+            datetime.strptime(date, "%d-%m-%Y")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use DD-MM-YYYY")
+    
+    # Validate fiqh method
+    if fiqh_method not in FIQH_METHODS:
+        raise HTTPException(status_code=400, detail=f"Invalid fiqh method. Use one of: {FIQH_METHODS}")
+    
+    # Fetch prayer times
+    try:
+        prayer_times = await prayer_service.get_prayer_times(
+            lat=lat,
+            lon=lon,
+            date=date,
+            timezone=tz,
+            fiqh_method=fiqh_method,
+            calculation_method=calculation_method,
+            include_debug=debug
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch prayer times: {e}")
+        raise HTTPException(status_code=503, detail=f"Failed to fetch prayer times: {str(e)}")
+    
+    result = {
+        "coordinates": {"lat": lat, "lon": lon},
+        "date": date,
+        "timezone": tz,
+        "fiqh_method": fiqh_method,
+        "calculation_method": calculation_method,
+        "method": prayer_times.get("method"),
+        "school": prayer_times.get("school"),
+        "format_12h": format_12h,
+        "timings": prayer_times["timings"],
+        "timings_12h": prayer_times.get("timings_12h", {}) if format_12h else prayer_times.get("timings", {}),
+        "sehri_ends": prayer_times["sehri_ends"],
+        "sehri_ends_12h": prayer_times["sehri_ends_12h"] if format_12h else prayer_times["sehri_ends"],
+        "iftar": prayer_times["iftar"],
+        "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
+        "is_derived": prayer_times.get("is_derived", False),
+    }
+    
+    if debug:
+        result["debug"] = prayer_times.get("debug")
+    
+    return result

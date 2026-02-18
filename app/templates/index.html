@@ -4,10 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ramadan Sehri & Iftar Tracker</title>
+    <meta name="description" content="Dynamic Ramadan countdown for Sehri and Iftar times with multi-fiqh support">
+    <meta name="theme-color" content="#f0c14b">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
             --color-bg: #0f1729;
@@ -79,15 +90,6 @@
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
         }
-        [data-theme="light"] .star::after {
-            content: '';
-            position: absolute;
-            width: 6px; height: 8px;
-            background: linear-gradient(to bottom, #f0c14b, #fbbf24);
-            border-radius: 50% 50% 20% 20%;
-            top: -8px; left: -1px;
-            opacity: 0.8;
-        }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 16px; scroll-behavior: smooth; }
@@ -121,88 +123,6 @@
             animation: twinkle 3s infinite;
         }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
-        /* Custom Cursor */
-        /* .custom-cursor {
-            position: fixed;
-            width: 24px;
-            height: 24px;
-            pointer-events: none;
-            z-index: 9999;
-            transform: translate(-50%, -50%);
-            transition: opacity 0.3s;
-        }
-        .custom-cursor svg {
-            width: 100%;
-            height: 100%;
-            filter: drop-shadow(0 0 8px var(--color-primary));
-            animation: cursorPulse 1.5s ease-in-out infinite;
-        }
-        @keyframes cursorPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        .cursor-trail {
-            position: fixed;
-            width: 8px;
-            height: 8px;
-            background: var(--color-primary);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9998;
-            opacity: 0.6;
-            transition: opacity 0.5s;
-        } */
-
-        /* Floating Lanterns */
-        /* .lanterns {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: -1;
-            overflow: hidden;
-        }
-        .lantern {
-            position: absolute;
-            width: 20px;
-            height: 28px;
-            background: linear-gradient(135deg, #f0c14b 0%, #fbbf24 50%, #f59e0b 100%);
-            border-radius: 50% 50% 45% 45%;
-            opacity: 0.15;
-            animation: floatLantern 15s ease-in-out infinite;
-        }
-        .lantern::before {
-            content: '';
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 4px;
-            height: 8px;
-            background: #8b4513;
-        }
-        .lantern::after {
-            content: '';
-            position: absolute;
-            bottom: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 6px;
-            background: linear-gradient(to bottom, #f0c14b, #92400e);
-            border-radius: 0 0 50% 50%;
-        }
-        @keyframes floatLantern {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-30px) rotate(2deg); }
-            50% { transform: translateY(-15px) rotate(-2deg); }
-            75% { transform: translateY(-25px) rotate(1deg); }
-        } */
-
-        [data-theme="light"] .lantern {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
-            opacity: 0.2;
-        }
 
         /* Hover Glow Effects */
         .btn, .card, .fiqh-card, .countdown-card, .prayer-item, .dua-card {
@@ -265,6 +185,28 @@
         .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: var(--space-xs); letter-spacing: -0.02em; }
         .header-subtitle { font-size: 1.1rem; color: var(--color-text-muted); }
 
+        /* Hijri Date Banner */
+        .hijri-banner {
+            display: flex; align-items: center; justify-content: center;
+            gap: var(--space-md); padding: var(--space-sm) var(--space-lg);
+            background: linear-gradient(135deg, rgba(240, 193, 75, 0.1), rgba(251, 191, 36, 0.05));
+            border: 1px solid rgba(240, 193, 75, 0.2);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-lg);
+            flex-wrap: wrap;
+        }
+        .hijri-date { font-size: 1.1rem; font-weight: 600; color: var(--color-primary); }
+        .hijri-date-separator { color: var(--color-text-dim); }
+        .gregorian-date { color: var(--color-text-muted); font-size: 0.95rem; }
+        .ramadan-badge {
+            background: linear-gradient(135deg, var(--color-primary), #d4a843);
+            color: #1e293b;
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
         .theme-toggle {
             position: fixed; top: var(--space-lg); right: var(--space-lg);
             background: var(--color-bg-card); backdrop-filter: blur(var(--backdrop-blur));
@@ -323,15 +265,18 @@
         .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md); }
         .form-group { display: flex; flex-direction: column; gap: var(--space-xs); }
         .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-        .form-group select {
+        .form-group select, .form-group input {
             padding: var(--space-md); background: var(--color-bg-elevated); border: 1px solid var(--color-border);
             border-radius: var(--radius-md); color: var(--color-text); font-family: var(--font-ui); font-size: 0.95rem;
-            cursor: pointer; transition: var(--transition-fast); appearance: none;
+            cursor: pointer; transition: var(--transition-fast);
+        }
+        .form-group select {
+            appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
             background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px;
         }
-        .form-group select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
-        .form-group select:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-group select:focus, .form-group input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+        .form-group select:disabled, .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) 0; border-top: 1px solid var(--color-border); margin-top: var(--space-md); }
         .toggle-label { font-size: 0.9rem; color: var(--color-text-muted); }
@@ -408,6 +353,30 @@
         .btn-icon { width: 36px; height: 36px; padding: 0; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; transition: all var(--transition-fast); display: flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: var(--color-bg-elevated); color: var(--color-primary); border-color: var(--color-primary); }
 
+        /* Language Selector */
+        .lang-selector {
+            position: fixed; top: var(--space-lg); left: var(--space-lg);
+            background: var(--color-bg-card); backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            padding: var(--space-xs); z-index: 100;
+        }
+        .lang-btn {
+            padding: var(--space-sm) var(--space-md); border: none; background: transparent;
+            color: var(--color-text-muted); cursor: pointer; border-radius: var(--radius-sm);
+            font-family: var(--font-ui); font-size: 0.85rem; font-weight: 500;
+            transition: all var(--transition-fast);
+        }
+        .lang-btn:hover, .lang-btn.active { background: var(--color-primary); color: var(--color-bg); }
+
+        /* Notification Settings */
+        .notification-settings {
+            display: flex; align-items: center; gap: var(--space-md);
+            padding: var(--space-md); background: var(--color-bg-elevated);
+            border-radius: var(--radius-md); margin-top: var(--space-md);
+        }
+        .notification-settings i { font-size: 1.5rem; color: var(--color-primary); }
+        .notification-settings p { flex: 1; font-size: 0.9rem; color: var(--color-text-muted); }
+
         /* Loading & Error */
         .loading, .error-message { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-2xl); text-align: center; }
         .spinner { width: 48px; height: 48px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: var(--space-md); }
@@ -433,24 +402,54 @@
         .footer-dev a:hover { color: var(--color-primary); }
         .hidden { display: none !important; }
 
+        /* Tabs */
+        .tabs { display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-sm); }
+        .tab-btn {
+            padding: var(--space-sm) var(--space-lg); border: none; background: transparent;
+            color: var(--color-text-muted); cursor: pointer; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            font-family: var(--font-ui); font-size: 0.9rem; font-weight: 500;
+            transition: all var(--transition-fast); border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .tab-btn:hover { color: var(--color-text); }
+        .tab-btn.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
         @media (max-width: 640px) {
             .app-container { padding: var(--space-md); }
             .header h1 { font-size: 1.8rem; }
             .settings-grid { grid-template-columns: 1fr; }
             .duas-grid { grid-template-columns: 1fr; }
+            .qibla-section { flex-direction: column; }
+            .lang-selector { top: auto; bottom: var(--space-lg); left: var(--space-lg); right: var(--space-lg); display: flex; justify-content: center; }
         }
     </style>
 </head>
 <body>
     <div class="stars" id="stars"></div>
+    
+    <!-- Language Selector -->
+    <div class="lang-selector">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="ur">اردو</button>
+        <button class="lang-btn" data-lang="ar">العربية</button>
+    </div>
+    
     <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
 
     <div class="app-container">
         <header class="header">
             <div class="header-icon"><i class="fas fa-mosque"></i></div>
-            <h1>Ramadan Sehri & Iftar Tracker</h1>
-            <p class="header-subtitle">Multi-Fiqh Prayer Times & Countdown</p>
+            <h1 data-i18n="title">Ramadan Sehri & Iftar Tracker</h1>
+            <p class="header-subtitle" data-i18n="subtitle">Multi-Fiqh Prayer Times & Countdown</p>
         </header>
+
+        <!-- Hijri Date Banner -->
+        <div class="hijri-banner" id="hijriBanner">
+            <span class="ramadan-badge" id="ramadanBadge">🌙 Ramadan 1447</span>
+            <span class="hijri-date" id="hijriDate">Loading Hijri date...</span>
+            <span class="hijri-date-separator">|</span>
+            <span class="gregorian-date" id="gregorianDate"></span>
+        </div>
 
         <div class="location-banner" id="locationBanner">
             <div class="location-info">
@@ -460,73 +459,169 @@
                     <span class="location-date" id="currentDate"></span>
                 </div>
             </div>
-            <button class="btn btn-text" onclick="showManualSettings()"><i class="fas fa-pen"></i> Change</button>
+            <button class="btn btn-text" onclick="showManualSettings()"><i class="fas fa-pen"></i> <span data-i18n="change">Change</span></button>
         </div>
 
         <div class="card hidden" id="settingsCard">
-            <h2 class="card-title"><i class="fas fa-sliders"></i> Location Settings</h2>
-            <div class="settings-grid">
-                <div class="form-group"><label for="country">Country</label><select id="country" onchange="loadCities()"><option value="">Select Country</option></select></div>
-                <div class="form-group"><label for="city">City</label><select id="city" onchange="updateCityData()" disabled><option value="">Select City</option></select></div>
-                <div class="form-group"><label for="timezone">Timezone</label><select id="timezone" onchange="fetchAllFiqhTimes()"></select></div>
+            <h2 class="card-title"><i class="fas fa-sliders"></i> <span data-i18n="settings">Location Settings</span></h2>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('location')" data-i18n="locationTab">Location</button>
+                <button class="tab-btn" onclick="showTab('coordinates')" data-i18n="coordsTab">Coordinates</button>
+            </div>
+            
+            <!-- Location Tab -->
+            <div id="locationTab">
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="country" data-i18n="country">Country</label>
+                        <select id="country" onchange="loadCities()">
+                            <option value="" data-i18n="selectCountry">Select Country</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="city" data-i18n="city">City</label>
+                        <select id="city" onchange="updateCityData()" disabled>
+                            <option value="" data-i18n="selectCity">Select City</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="calculationMethod" data-i18n="calcMethod">Calculation Method</label>
+                        <select id="calculationMethod">
+                            <option value="isna">ISNA</option>
+                            <option value="karachi">Karachi</option>
+                            <option value="mwl">Muslim World League</option>
+                            <option value="umm_al_qura">Umm al-Qura (Makkah)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="timezone" data-i18n="timezone">Timezone</label>
+                        <select id="timezone" onchange="fetchAllFiqhTimes()"></select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coordinates Tab -->
+            <div id="coordinatesTab" class="hidden">
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="manualLat" data-i18n="latitude">Latitude</label>
+                        <input type="number" id="manualLat" step="0.0001" placeholder="e.g., 24.8607">
+                    </div>
+                    <div class="form-group">
+                        <label for="manualLon" data-i18n="longitude">Longitude</label>
+                        <input type="number" id="manualLon" step="0.0001" placeholder="e.g., 67.0011">
+                    </div>
+                    <div class="form-group">
+                        <label for="manualTimezone" data-i18n="timezone">Timezone</label>
+                        <select id="manualTimezone"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="calcMethodCoords" data-i18n="calcMethod">Calculation Method</label>
+                        <select id="calcMethodCoords">
+                            <option value="isna">ISNA</option>
+                            <option value="karachi">Karachi</option>
+                            <option value="mwl">Muslim World League</option>
+                            <option value="umm_al_qura">Umm al-Qura (Makkah)</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="fetchByCoordinates()" style="margin-top: var(--space-md);">
+                    <i class="fas fa-map-marker-alt"></i> <span data-i18n="useCoords">Use These Coordinates</span>
+                </button>
+            </div>
+            
+            <div class="toggle-row">
+                <span class="toggle-label" data-i18n="autoTimezone">Auto-detect timezone</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoTimezoneToggle" onchange="handleAutoTimezone()" checked>
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
             <div class="toggle-row">
-                <span class="toggle-label">Auto-detect timezone</span>
-                <label class="toggle-switch"><input type="checkbox" id="autoTimezoneToggle" onchange="handleAutoTimezone()"><span class="toggle-slider"></span></label>
+                <span class="toggle-label" data-i18n="timeFormat">12-hour format</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="timeFormatToggle" checked onchange="toggleTimeFormat()">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
-            <div class="toggle-row">
-                <span class="toggle-label">12-hour format</span>
-                <label class="toggle-switch"><input type="checkbox" id="timeFormatToggle" checked onchange="toggleTimeFormat()"><span class="toggle-slider"></span></label>
+            
+            <!-- Notification Settings -->
+            <div class="notification-settings">
+                <i class="fas fa-bell"></i>
+                <p data-i18n="notifications">Get notified before Sehri and Iftar</p>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notificationToggle" onchange="toggleNotifications()">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
-            <button class="btn btn-primary" onclick="fetchAllFiqhTimes()"><i class="fas fa-sync-alt"></i> Update Times</button>
+            
+            <button class="btn btn-primary" onclick="fetchAllFiqhTimes()">
+                <i class="fas fa-sync-alt"></i> <span data-i18n="updateTimes">Update Times</span>
+            </button>
         </div>
 
-        <div id="loadingSection" class="card hidden"><div class="loading"><div class="spinner"></div><p>Loading prayer times...</p></div></div>
-        <div id="errorSection" class="card hidden"><div class="error-message"><i class="fas fa-exclamation-triangle"></i><p id="errorMessage">Unable to fetch prayer times</p><button class="btn btn-primary" style="margin-top:16px;width:auto;" onclick="retryFetch()"><i class="fas fa-redo"></i> Retry</button></div></div>
+        <div id="loadingSection" class="card hidden">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p data-i18n="loading">Loading prayer times...</p>
+            </div>
+        </div>
+        
+        <div id="errorSection" class="card hidden">
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p id="errorMessage">Unable to fetch prayer times</p>
+                <button class="btn btn-primary" style="margin-top:16px;width:auto;" onclick="retryFetch()">
+                    <i class="fas fa-redo"></i> <span data-i18n="retry">Retry</span>
+                </button>
+            </div>
+        </div>
 
         <div id="resultsSection" class="hidden">
             <div class="card">
-                <h2 class="card-title"><i class="fas fa-clock"></i> Multi-Fiqh Countdown</h2>
-                <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: var(--space-lg);">Compare Sehri & Iftar times across different Islamic schools of jurisprudence</p>
+                <h2 class="card-title"><i class="fas fa-clock"></i> <span data-i18n="multiFiqh">Multi-Fiqh Countdown</span></h2>
+                <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: var(--space-lg);" data-i18n="compareTimes">Compare Sehri & Iftar times across different Islamic schools of jurisprudence</p>
                 <div class="fiqh-grid" id="fiqhGrid"></div>
             </div>
 
             <div class="card countdown-section">
-                <h2 class="card-title"><i class="fas fa-stopwatch"></i> Today's Countdown</h2>
+                <h2 class="card-title"><i class="fas fa-stopwatch"></i> <span data-i18n="todayCountdown">Today's Countdown</span></h2>
                 <div class="countdown-grid" id="countdownGrid"></div>
             </div>
 
             <div class="card">
-                <h2 class="card-title"><i class="fas fa-pray"></i> Prayer Times</h2>
+                <h2 class="card-title"><i class="fas fa-pray"></i> <span data-i18n="prayerTimes">Prayer Times</span></h2>
                 <div class="prayer-grid" id="prayerGrid"></div>
             </div>
 
             <div class="card">
-                <h2 class="card-title"><i class="fas fa-book-quran"></i> Recommended Duas</h2>
+                <h2 class="card-title"><i class="fas fa-book-quran"></i> <span data-i18n="recommendedDuas">Recommended Duas</span></h2>
                 <div class="duas-grid">
                     <div class="dua-card iftar">
-                        <div class="dua-header"><span class="dua-title">Iftar Dua - 1</span></div>
+                        <div class="dua-header"><span class="dua-title" data-i18n="iftarDua1">Iftar Dua - 1</span></div>
                         <div class="dua-arabic">اللَّهُمَّ إِنِّي لَكَ صُمْتُ وَبِكَ آمَنْتُ وَعَلَىٰ رِزْقِكَ أَفْطَرْتُ</div>
-                        <div class="dua-meaning">O Allah, I fasted for You and believed in You and I break my fast with Your sustenance</div>
+                        <div class="dua-meaning" data-i18n="iftarDua1Meaning">O Allah, I fasted for You and believed in You and I break my fast with Your sustenance</div>
                         <div class="dua-transliteration">Allahumma inni laka sumtu wa bika aamantu wa 'ala rizqika aftartu</div>
                         <div class="dua-reference">Sunan Abi Dawud 2358</div>
                         <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
                     </div>
                     <div class="dua-card iftar">
-                        <div class="dua-header"><span class="dua-title">Iftar Dua - 2</span></div>
+                        <div class="dua-header"><span class="dua-title" data-i18n="iftarDua2">Iftar Dua - 2</span></div>
                         <div class="dua-arabic">ذَهَبَ الظَّمَأُ، وَابْتَلَّتِ الْعُرُوقُ، وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللَّهُ</div>
-                        <div class="dua-meaning">The thirst is gone, the veins are moist, and the reward is established, insha'Allah</div>
+                        <div class="dua-meaning" data-i18n="iftarDua2Meaning">The thirst is gone, the veins are moist, and the reward is established, insha'Allah</div>
                         <div class="dua-transliteration">Dhahaba adh-dhama'u, wabtallatil-'urooqu, wa thabata al-ajru in shaa Allah</div>
                         <div class="dua-reference">Sunan Abi Dawud 2357</div>
                         <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
                     </div>
                     <div class="dua-card sehri">
-                        <div class="dua-header"><span class="dua-title">Sehri Intention</span></div>
+                        <div class="dua-header"><span class="dua-title" data-i18n="sehriDua">Sehri Intention</span></div>
                         <div class="dua-arabic">وَبِصَوْمِ غَدٍ نَّوَيْتُ مِنْ شَهْرِ رَمَضَانَ</div>
-                        <div class="dua-meaning">I intend to fast tomorrow in the month of Ramadan</div>
+                        <div class="dua-meaning" data-i18n="sehriDuaMeaning">I intend to fast tomorrow in the month of Ramadan</div>
                         <div class="dua-transliteration">Wa bisawmi ghadin nawaiytu min shahri Ramadan</div>
                         <div class="dua-reference">Commonly cited in South Asian tradition</div>
-                        <div class="dua-note"><i class="fas fa-info-circle"></i> <strong>Note:</strong> The intention (niyyah) is an action of the heart. Scholars agree it should be made before fasting, but verbal recitation is optional.</div>
+                        <div class="dua-note"><i class="fas fa-info-circle"></i> <strong data-i18n="note">Note:</strong> <span data-i18n="sehriNote">The intention (niyyah) is an action of the heart. Scholars agree it should be made before fasting, but verbal recitation is optional.</span></div>
                         <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
                     </div>
                 </div>
@@ -534,20 +629,153 @@
         </div>
 
         <footer class="footer">
-            <p>Ramadan 2026 • prayer times based on your location</p>
+            <p data-i18n="footerText">Ramadan 2026 • prayer times based on your location</p>
             <div class="footer-social">
                 <a href="https://github.com/RasikhAli/Ramadan-Tracker" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
                 <a href="https://linkedin.com/in/rasikh-ali/" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
             </div>
-            <p class="footer-dev">Developed by <a href="https://github.com/RasikhAli" target="_blank">Rasikh Ali</a></p>
+            <p class="footer-dev" data-i18n="developedBy">Developed by <a href="https://github.com/RasikhAli" target="_blank">Rasikh Ali</a></p>
         </footer>
     </div>
 
     <script>
+        // State
         let countriesData = {}, citiesData = {}, allFiqhData = null, countdownInterval = null;
         let is12HourFormat = true, browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let currentLat = null, currentLon = null, currentCalcMethod = 'karachi';
+        let notificationEnabled = false;
 
-        document.addEventListener('DOMContentLoaded', () => { initTheme(); createStars(); loadInitialData(); detectLocation(); updateCurrentDate(); });
+        // Translations
+        const translations = {
+            en: {
+                title: 'Ramadan Sehri & Iftar Tracker',
+                subtitle: 'Multi-Fiqh Prayer Times & Countdown',
+                change: 'Change',
+                settings: 'Location Settings',
+                locationTab: 'Location',
+                coordsTab: 'Coordinates',
+                country: 'Country',
+                city: 'City',
+                selectCountry: 'Select Country',
+                selectCity: 'Select City',
+                calcMethod: 'Calculation Method',
+                timezone: 'Timezone',
+                latitude: 'Latitude',
+                longitude: 'Longitude',
+                useCoords: 'Use These Coordinates',
+                autoTimezone: 'Auto-detect timezone',
+                timeFormat: '12-hour format',
+                notifications: 'Get notified before Sehri and Iftar',
+                updateTimes: 'Update Times',
+                loading: 'Loading prayer times...',
+                retry: 'Retry',
+                multiFiqh: 'Multi-Fiqh Countdown',
+                compareTimes: 'Compare Sehri & Iftar times across different Islamic schools of jurisprudence',
+                todayCountdown: "Today's Countdown",
+                prayerTimes: 'Prayer Times',
+                recommendedDuas: 'Recommended Duas',
+                iftarDua1: 'Iftar Dua - 1',
+                iftarDua1Meaning: "O Allah, I fasted for You and believed in You and I break my fast with Your sustenance",
+                iftarDua2: 'Iftar Dua - 2',
+                iftarDua2Meaning: "The thirst is gone, the veins are moist, and the reward is established, insha'Allah",
+                sehriDua: 'Sehri Intention',
+                sehriDuaMeaning: 'I intend to fast tomorrow in the month of Ramadan',
+                note: 'Note:',
+                sehriNote: 'The intention (niyyah) is an action of the heart. Scholars agree it should be made before fasting, but verbal recitation is optional.',
+                footerText: 'Ramadan 2026 • prayer times based on your location',
+                developedBy: 'Developed by <a href="https://github.com/RasikhAli" target="_blank">Rasikh Ali</a>'
+            },
+            ur: {
+                title: 'رمضان سحری و افطار ٹریکر',
+                subtitle: 'متعدد فقہ نماز کے اوقات اور کاؤنٹ ڈاؤن',
+                change: 'تبدیل کریں',
+                settings: 'مقام کی ترتیبات',
+                locationTab: 'مقام',
+                coordsTab: 'کوآرڈینیٹس',
+                country: 'ملک',
+                city: 'شہر',
+                selectCountry: 'ملک منتخب کریں',
+                selectCity: 'شہر منتخب کریں',
+                calcMethod: 'حساب کا طریقہ',
+                timezone: 'ٹائم زون',
+                latitude: 'عرض البلد',
+                longitude: 'طول البلد',
+                useCoords: 'ان کوآرڈینیٹس کا استعمال کریں',
+                autoTimezone: 'ٹائم زون خودکار تلاش کریں',
+                timeFormat: '12 گھنٹے کا فارمیٹ',
+                notifications: 'سحری اور افطار سے پہلے اطلاع حاصل کریں',
+                updateTimes: 'اوقات اپڈیٹ کریں',
+                loading: 'نماز کے اوقات لوڈ ہو رہے ہیں...',
+                retry: 'دوبارہ کوشش کریں',
+                multiFiqh: 'متعدد فقہ کاؤنٹ ڈاؤن',
+                compareTimes: 'مختلف اسلامی فقہی مکاتب فکر میں سحری و افطار کے اوقات کا موازنہ کریں',
+                todayCountdown: 'آج کا کاؤنٹ ڈاؤن',
+                prayerTimes: 'نماز کے اوقات',
+                recommendedDuas: 'مستحب دعائیں',
+                iftarDua1: 'افطار کی دعا - 1',
+                iftarDua1Meaning: 'اے اللہ! میں نے تیرے لیے روزہ رکھا اور تجھ پر ایمان لایا اور تیرے دیے ہوئے رزق سے افطار کرتا ہوں',
+                iftarDua2: 'افطار کی دعا - 2',
+                iftarDua2Meaning: 'پیاس دور ہو گئی، رگیں تر ہو گئیں اور ان شاء اللہ ثواب قائم ہو گیا',
+                sehriDua: 'سحری کی نیت',
+                sehriDuaMeaning: 'میں نے رمضان المبارک کے مہینے میں کل کے روزے کی نیت کی',
+                note: 'نوٹ:',
+                sehriNote: 'نیت دل کا عمل ہے۔ علماء کا اتفاق ہے کہ یہ روزے سے پہلے کرنی چاہیے، لیکن زبانی پڑھنا اختیاری ہے۔',
+                footerText: 'رمضان 2026 • آپ کے مقام کے مطابق نماز کے اوقات',
+                developedBy: '<a href="https://github.com/RasikhAli" target="_blank">راسخ علی</a> کی تیاری'
+            },
+            ar: {
+                title: 'متتبع سحور وإفطار رمضان',
+                subtitle: 'أوقات الصلاة متعددة المذاهب والعد التنازلي',
+                change: 'تغيير',
+                settings: 'إعدادات الموقع',
+                locationTab: 'الموقع',
+                coordsTab: 'الإحداثيات',
+                country: 'الدولة',
+                city: 'المدينة',
+                selectCountry: 'اختر الدولة',
+                selectCity: 'اختر المدينة',
+                calcMethod: 'طريقة الحساب',
+                timezone: 'المنطقة الزمنية',
+                latitude: 'خط العرض',
+                longitude: 'خط الطول',
+                useCoords: 'استخدام هذه الإحداثيات',
+                autoTimezone: 'الكشف التلقائي عن المنطقة الزمنية',
+                timeFormat: 'تنسيق 12 ساعة',
+                notifications: 'الحصول على إشعار قبل السحور والإفطار',
+                updateTimes: 'تحديث الأوقات',
+                loading: 'جاري تحميل أوقات الصلاة...',
+                retry: 'إعادة المحاولة',
+                multiFiqh: 'العد التنازلي متعدد المذاهب',
+                compareTimes: 'مقارنة أوقات السحور والإفطار بين المذاهب الإسلامية المختلفة',
+                todayCountdown: 'عد تنازلي اليوم',
+                prayerTimes: 'أوقات الصلاة',
+                recommendedDuas: 'الأدعية المستحبة',
+                iftarDua1: 'دعاء الإفطار - 1',
+                iftarDua1Meaning: 'اللهم إني صمت لك وآمنت بك وأفطرت على رزقك',
+                iftarDua2: 'دعاء الإفطار - 2',
+                iftarDua2Meaning: 'ذهب الظمأ وابتلت العروق وثبت الأجر إن شاء الله',
+                sehriDua: 'نية السحور',
+                sehriDuaMeaning: 'نويت صيام غد من شهر رمضان',
+                note: 'ملاحظة:',
+                sehriNote: 'النية عمل القلب. اتفق العلماء على أنها يجب أن تتم قبل الصيام، لكن التلفظ بها اختياري.',
+                footerText: 'رمضان 2026 • أوقات الصلاة حسب موقعك',
+                developedBy: 'تطوير <a href="https://github.com/RasikhAli" target="_blank">راسخ علي</a>'
+            }
+        };
+
+        let currentLang = 'en';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initPWA();
+            createStars();
+            loadInitialData();
+            detectLocation();
+            updateCurrentDate();
+            fetchHijriDate(browserTimezone);
+            initLanguage();
+        });
 
         function initTheme() {
             const saved = localStorage.getItem('theme') || 'dark';
@@ -562,6 +790,46 @@
             document.querySelector('#themeToggle i').className = next === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
         });
 
+        function initPWA() {
+            // Register service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
+        }
+
+        function initLanguage() {
+            const saved = localStorage.getItem('lang') || 'en';
+            setLanguage(saved);
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setLanguage(btn.dataset.lang);
+                });
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (translations[lang] && translations[lang][key]) {
+                    el.innerHTML = translations[lang][key];
+                }
+            });
+            
+            // Set RTL for Arabic
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang;
+        }
+
         function createStars() {
             const container = document.getElementById('stars');
             for (let i = 0; i < 500; i++) {
@@ -574,96 +842,51 @@
             }
         }
 
-        // function createLanterns() {
-        //     let container = document.getElementById('lanterns');
-        //     if (!container) {
-        //         container = document.createElement('div');
-        //         container.id = 'lanterns';
-        //         container.className = 'lanterns';
-        //         document.body.appendChild(container);
-        //     }
-        //     for (let i = 0; i < 8; i++) {
-        //         const lantern = document.createElement('div');
-        //         lantern.className = 'lantern';
-        //         lantern.style.left = Math.random() * 100 + '%';
-        //         lantern.style.top = (60 + Math.random() * 40) + '%';
-        //         lantern.style.animationDelay = Math.random() * 10 + 's';
-        //         lantern.style.animationDuration = (12 + Math.random() * 8) + 's';
-        //         container.appendChild(lantern);
-        //     }
-        // }
-
-        // function initCustomCursor() {
-        //     // Skip on mobile/touch devices
-        //     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
-            
-        //     const cursor = document.createElement('div');
-        //     cursor.className = 'custom-cursor';
-        //     const svgIcon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-        //         '<path d="M12 2C12 2 15 5 15 10C15 14.4183 12 18 12 22C12 18 9 14.4183 9 10C9 5 12 2 12 2Z" fill="#f0c14b"/>' +
-        //         '</svg>';
-        //     cursor.innerHTML = svgIcon;
-        //     document.body.appendChild(cursor);
-
-        //     const trail = document.createElement('div');
-        //     trail.className = 'cursor-trail';
-        //     document.body.appendChild(trail);
-
-        //     let mouseX = 0, mouseY = 0;
-        //     let cursorX = 0, cursorY = 0;
-        //     let trailX = 0, trailY = 0;
-
-        //     document.addEventListener('mousemove', (e) => {
-        //         mouseX = e.clientX;
-        //         mouseY = e.clientY;
-        //     });
-
-        //     function animate() {
-        //         // Smooth cursor follow
-        //         cursorX += (mouseX - cursorX) * 0.15;
-        //         cursorY += (mouseY - cursorY) * 0.15;
-        //         cursor.style.left = cursorX + 'px';
-        //         cursor.style.top = cursorY + 'px';
-
-        //         // Trail follows with delay
-        //         trailX += (mouseX - trailX) * 0.1;
-        //         trailY += (mouseY - trailY) * 0.1;
-        //         trail.style.left = trailX + 'px';
-        //         trail.style.top = trailY + 'px';
-
-        //         requestAnimationFrame(animate);
-        //     }
-        //     animate();
-
-        //     // Hide default cursor on interactive elements
-        //     const interactiveElements = document.querySelectorAll('a, button, input, select');
-        //     interactiveElements.forEach(el => {
-        //         el.style.cursor = 'none';
-        //     });
-        // }
-
         function updateCurrentDate() {
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('gregorianDate').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        async function fetchHijriDate(timezone) {
+            try {
+                const tz = timezone || browserTimezone || 'UTC';
+                const res = await fetch(`/api/hijri-date?timezone=${encodeURIComponent(tz)}`);
+                const data = await res.json();
+                if (data.hijri_format) {
+                    document.getElementById('hijriDate').textContent = data.hijri_format;
+                    
+                    // Check if it's Ramadan
+                    if (data.hijri_month_number === 9) {
+                        document.getElementById('ramadanBadge').textContent = `🌙 Ramadan Day ${data.hijri_day}`;
+                        document.getElementById('ramadanBadge').style.display = 'inline-block';
+                    } else {
+                        document.getElementById('ramadanBadge').style.display = 'none';
+                    }
+                }
+            } catch (e) {
+                console.log('Failed to fetch Hijri date:', e);
+            }
         }
 
         async function detectLocation() {
             document.getElementById('detectedLocation').textContent = 'Detecting...';
             
-            // First try browser's Geolocation API for accurate user location
+            // First try browser's Geolocation API
             if (navigator.geolocation) {
                 try {
                     const position = await new Promise((resolve, reject) => {
                         navigator.geolocation.getCurrentPosition(resolve, reject, {
                             enableHighAccuracy: true,
                             timeout: 10000,
-                            maximumAge: 300000 // 5 minutes cache
+                            maximumAge: 300000
                         });
                     });
                     
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    currentLat = lat;
+                    currentLon = lon;
                     
-                    // Send coordinates to backend to find closest city
                     const res = await fetch(`/api/detect-location-from-coords?lat=${lat}&lon=${lon}&browser_timezone=${encodeURIComponent(browserTimezone)}`);
                     const data = await res.json();
                     
@@ -694,14 +917,36 @@
             if (Object.keys(countriesData).length === 0) loadInitialData();
         }
 
+        function showTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('locationTab').classList.toggle('hidden', tab !== 'location');
+            document.getElementById('coordinatesTab').classList.toggle('hidden', tab !== 'coordinates');
+        }
+
         async function loadInitialData() {
             const res = await fetch('/api/datas');
             const data = await res.json();
-            countriesData = data.countries; citiesData = data.cities_data;
+            countriesData = data.countries; 
+            citiesData = data.cities_data;
+            
             const countrySel = document.getElementById('country');
             countriesData.forEach(c => { countrySel.innerHTML += `<option value="${c}">${c}</option>`; });
+            
+            // Timezone dropdowns - sorted alphabetically
+            const commonTimezones = [
+                'Africa/Cairo', 'America/New_York', 'Asia/Dubai', 'Asia/Karachi',
+                'Asia/Kolkata', 'Asia/Riyadh', 'Europe/London', 'UTC'
+            ];
+            
             const tzSel = document.getElementById('timezone');
-            data.timezones.forEach(tz => { tzSel.innerHTML += `<option value="${tz}" ${tz===browserTimezone?'selected':''}>${tz.replace(/_/g,' ')}</option>`; });
+            const manualTzSel = document.getElementById('manualTimezone');
+            commonTimezones.forEach(tz => { 
+                const opt = `<option value="${tz}" ${tz===browserTimezone?'selected':''}>${tz.replace(/_/g,' ')}</option>`;
+                tzSel.innerHTML += opt;
+                manualTzSel.innerHTML += opt;
+            });
         }
 
         async function loadCities() {
@@ -710,7 +955,12 @@
             citySel.innerHTML = '<option value="">Select City</option>';
             citySel.disabled = true;
             if (country && citiesData[country]) {
-                Object.keys(citiesData[country].cities).forEach(c => citySel.innerHTML += `<option value="${c}">${c}</option>`);
+                const cities = citiesData[country].cities;
+                if (Array.isArray(cities)) {
+                    cities.forEach(c => citySel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+                } else {
+                    Object.keys(cities).forEach(c => citySel.innerHTML += `<option value="${c}">${c}</option>`);
+                }
                 citySel.disabled = false;
             }
         }
@@ -725,10 +975,83 @@
             if (allFiqhData) displayResults(allFiqhData);
         }
 
+        function toggleNotifications() {
+            notificationEnabled = document.getElementById('notificationToggle').checked;
+            
+            if (notificationEnabled && 'Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission !== 'granted') {
+                        notificationEnabled = false;
+                        document.getElementById('notificationToggle').checked = false;
+                        alert('Please enable notifications in your browser settings');
+                    }
+                });
+            }
+            
+            localStorage.setItem('notifications', notificationEnabled);
+        }
+
         function updateCityData() {
             const c = document.getElementById('country').value, city = document.getElementById('city').value;
-            if (c && city && citiesData[c]?.cities[city]) document.getElementById('timezone').value = citiesData[c].cities[city].timezone;
+            if (c && city && citiesData[c]?.cities) {
+                const cities = citiesData[c].cities;
+                if (Array.isArray(cities)) {
+                    const cityData = cities.find(ct => ct.name === city);
+                    if (cityData) {
+                        document.getElementById('timezone').value = cityData.timezone;
+                        currentLat = cityData.lat;
+                        currentLon = cityData.lon;
+                    }
+                } else if (cities[city]) {
+                    document.getElementById('timezone').value = cities[city].timezone;
+                }
+            }
             fetchAllFiqhTimes();
+        }
+
+        async function fetchByCoordinates() {
+            const lat = parseFloat(document.getElementById('manualLat').value);
+            const lon = parseFloat(document.getElementById('manualLon').value);
+            const tz = document.getElementById('manualTimezone').value;
+            const calcMethod = document.getElementById('calcMethodCoords').value;
+            
+            if (isNaN(lat) || isNaN(lon)) {
+                alert('Please enter valid latitude and longitude');
+                return;
+            }
+            
+            currentLat = lat;
+            currentLon = lon;
+            currentCalcMethod = calcMethod;
+            
+            showLoading();
+            
+            try {
+                const res = await fetch(`/api/prayer-times-by-coords?lat=${lat}&lon=${lon}&calculation_method=${calcMethod}&timezone=${encodeURIComponent(tz)}&format_12h=${is12HourFormat}`);
+                if (!res.ok) throw new Error('Failed');
+                
+                const data = await res.json();
+                
+                // Transform data for display
+                allFiqhData = {
+                    city: `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
+                    country: 'Custom Location',
+                    timezone: tz,
+                    lat: lat,
+                    lon: lon,
+                    calculation_method: calcMethod,
+                    fiqh_times: {
+                        hanafi: { ...data, fiqh_method: 'hanafi' },
+                        shafi: { ...data, fiqh_method: 'shafi' },
+                        jaffari: { ...data, fiqh_method: 'jaffari', is_derived: true }
+                    }
+                };
+                
+                displayResults(allFiqhData);
+                startCountdown();
+            } catch (e) {
+                showError(e.message);
+            }
         }
 
         async function fetchAllFiqhTimesForCity(city, country) {
@@ -740,16 +1063,35 @@
             document.getElementById('country').value = tc;
             await loadCities();
             document.getElementById('city').value = tcity;
+            
+            if (citiesData[tc]?.cities) {
+                const cities = citiesData[tc].cities;
+                if (Array.isArray(cities)) {
+                    const cityData = cities.find(c => c.name === tcity);
+                    if (cityData) {
+                        document.getElementById('timezone').value = cityData.timezone;
+                        currentLat = cityData.lat;
+                        currentLon = cityData.lon;
+                    }
+                } else if (cities[tcity]) {
+                    document.getElementById('timezone').value = cities[tcity].timezone;
+                }
+            }
             fetchAllFiqhTimes();
         }
 
         async function fetchAllFiqhTimes() {
             const country = document.getElementById('country').value, city = document.getElementById('city').value;
             const tz = document.getElementById('timezone').value, auto = document.getElementById('autoTimezoneToggle').checked;
+            const calcMethod = document.getElementById('calculationMethod').value;
+            
             if (!country || !city) { showManualSettings(); return; }
+            
+            currentCalcMethod = calcMethod;
             showLoading();
+            
             try {
-                let url = `/api/prayer-times-all?country=${encodeURIComponent(country)}&city=${encodeURIComponent(city)}&format_12h=${is12HourFormat}`;
+                let url = `/api/prayer-times-all?country=${encodeURIComponent(country)}&city=${encodeURIComponent(city)}&calculation_method=${calcMethod}&format_12h=${is12HourFormat}`;
                 if (!auto) url += `&timezone=${encodeURIComponent(tz)}`;
                 const res = await fetch(url);
                 if (!res.ok) throw new Error('Failed');
@@ -782,20 +1124,25 @@
             document.getElementById('locationBanner').classList.remove('hidden');
             document.getElementById('detectedLocation').textContent = `${data.city}, ${data.country}`;
 
-        // Display order: Jaffari, Hanafi, Shafi
+            // Update Hijri date with the city's timezone
+            if (data.timezone) {
+                fetchHijriDate(data.timezone);
+            }
+
             const methodOrder = ['jaffari', 'hanafi', 'shafi'];
             const methodNames = { hanafi: 'Hanafi', shafi: 'Shafi/Maliki/Hanbali', jaffari: 'Jaffari (Shia)' };
             
-            // Fiqh Grid
             const fiqh = data.fiqh_times;
             const fiqhClasses = { hanafi: 'hanafi', shafi: 'shafi', jaffari: 'jaffari' };
             
             let fiqhHTML = '';
             methodOrder.forEach(method => {
                 const m = fiqh[method];
+                if (!m || m.error) return;
+                const isDerived = m.is_derived ? '<span style="font-size:0.7em;opacity:0.8;display:block;">(Derived)</span>' : '';
                 fiqhHTML += `
                     <div class="fiqh-card ${fiqhClasses[method]}">
-                        <div class="fiqh-label">${methodNames[method]}</div>
+                        <div class="fiqh-label">${methodNames[method]}${isDerived}</div>
                         <div class="fiqh-times">
                             <div class="fiqh-time-item">
                                 <div class="fiqh-time-label">Sehri Ends</div>
@@ -808,36 +1155,53 @@
                         </div>
                     </div>`;
             });
+            
+            fiqhHTML += `
+                <div class="fiqh-card" style="grid-column: 1 / -1; background: rgba(244, 114, 182, 0.1); border-color: rgba(244, 114, 182, 0.3);">
+                    <div style="font-size: 0.85rem; color: var(--color-text-muted); text-align: center;">
+                        <i class="fas fa-info-circle" style="color: var(--color-jaffari); margin-right: 8px;"></i>
+                        <strong>Jaffari times</strong> in this app are derived by fixed offset from Hanafi: 
+                        <strong>Sehri −10 min</strong>, <strong>Iftar +10 min</strong>.
+                    </div>
+                </div>`;
+            
             document.getElementById('fiqhGrid').innerHTML = fiqhHTML;
 
             // Countdown
             const now = new Date();
-            const getTarget = (timeStr) => { const [h,m] = timeStr.split(':').map(Number); const d = new Date(now); d.setHours(h,m,0,0); if (d<now) d.setDate(d.getDate()+1); return d; };
-            const targets = methodOrder.map(method => ({method, se:getTarget(fiqh[method].sehri_ends), iftar:getTarget(fiqh[method].iftar_12h||fiqh[method].iftar)}));
-            let countdownHTML = '';
+            const getTarget = (timeStr) => { 
+                const [h,m] = timeStr.split(':').map(Number); 
+                const d = new Date(now); 
+                d.setHours(h,m,0,0); 
+                if (d<now) d.setDate(d.getDate()+1); 
+                return d; 
+            };
             
-            targets.forEach(item => {
-                const method = item.method;
-                const seDiff = item.se - now, ifDiff = item.iftar - now;
-                const seActive = seDiff > 0 && seDiff < ifDiff;
-                const ifActive = ifDiff > 0 && (ifDiff <= seDiff || seDiff <= 0);
+            let countdownHTML = '';
+            methodOrder.forEach(method => {
+                const m = fiqh[method];
+                if (!m || m.error) return;
+                
+                const sehriTime = m.sehri_ends;
+                const iftarTime = m.iftar;
+                
                 countdownHTML += `
-                    <div class="countdown-card" style="${seActive?'border-color:var(--color-sehri)':''} ${ifActive?'border-color:var(--color-iftar)':''}">
-                        <div class="countdown-label">${methodNames[method]} <br> Sehri</div>
-                        <div class="countdown-time">${fiqh[method].sehri_ends_12h||fiqh[method].sehri_ends}</div>
+                    <div class="countdown-card">
+                        <div class="countdown-label">${methodNames[method]}<br>Sehri</div>
+                        <div class="countdown-time">${m.sehri_ends_12h || sehriTime}</div>
                         <div class="countdown-timer" id="timer-${method}-se">--:--:--:--</div>
                     </div>
-                    <div class="countdown-card" style="${ifActive?'border-color:var(--color-iftar)':''}">
-                        <div class="countdown-label">${methodNames[method]} <br> Iftar</div>
-                        <div class="countdown-time">${fiqh[method].iftar_12h||fiqh[method].iftar}</div>
+                    <div class="countdown-card">
+                        <div class="countdown-label">${methodNames[method]}<br>Iftar</div>
+                        <div class="countdown-time">${m.iftar_12h || iftarTime}</div>
                         <div class="countdown-timer" id="timer-${method}-if">--:--:--:--</div>
                     </div>`;
             });
             document.getElementById('countdownGrid').innerHTML = countdownHTML;
 
             // Prayer grid (use Hanafi as default)
-            const timings = fiqh.hanafi.timings_12h || fiqh.hanafi.timings;
-            const timings24 = fiqh.hanafi.timings;
+            const timings = fiqh.hanafi?.timings_12h || fiqh.hanafi?.timings || {};
+            const timings24 = fiqh.hanafi?.timings || {};
             let prayerHTML = '';
             ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'].forEach(p => {
                 prayerHTML += `<div class="prayer-item"><div class="prayer-name">${p}</div><div class="prayer-time">${timings[p]||timings24[p]||'--:--'}</div></div>`;
@@ -854,57 +1218,38 @@
         function updateCountdown() {
             if (!allFiqhData) return;
             
-            // Get current time in the city's timezone
             const cityTimezone = allFiqhData.timezone;
             const now = new Date();
-            
-            // Get current time in city's timezone using Intl API
             const cityTimeStr = now.toLocaleString('en-US', { timeZone: cityTimezone });
             const cityNow = new Date(cityTimeStr);
             
-            // Use methodOrder for consistent ordering: Jaffari, Hanafi, Shafi
             const methodOrder = ['jaffari', 'hanafi', 'shafi'];
             
             methodOrder.forEach(k => {
                 const v = allFiqhData.fiqh_times[k];
-                if (!v) return;
-                
-                // Use ISO datetime strings from API if available (more accurate)
-                const fajrDatetime = v.fajr_datetime;
-                const maghribDatetime = v.maghrib_datetime;
+                if (!v || v.error) return;
                 
                 ['se','if'].forEach((type, i) => {
                     const el = document.getElementById(`timer-${k}-${type}`);
                     if (!el) return;
                     
-                    let targetTime;
+                    // Always use 24-hour format for parsing (sehri_ends and iftar are in 24h format)
+                    const timeStr = i === 0 ? v.sehri_ends : v.iftar;
+                    const parts = timeStr.split(':');
+                    if (parts.length < 2) return;
                     
-                    // Use ISO datetime if available
-                    if (type === 'se' && fajrDatetime) {
-                        targetTime = new Date(fajrDatetime);
-                    } else if (type === 'if' && maghribDatetime) {
-                        targetTime = new Date(maghribDatetime);
-                    } else {
-                        // Fallback to time string parsing
-                        const timeStr = i === 0 ? v.sehri_ends : (v.iftar_12h || v.iftar);
-                        const parts = timeStr.split(':');
-                        if (parts.length < 2) return;
-                        
-                        const h = parseInt(parts[0], 10);
-                        const m = parseInt(parts[1], 10);
-                        if (isNaN(h) || isNaN(m)) return;
-                        
-                        // Create target time in city's timezone
-                        targetTime = new Date(cityNow);
-                        targetTime.setHours(h, m, 0, 0);
-                    }
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    if (isNaN(h) || isNaN(m)) return;
                     
-                    // If target time has passed, set to next day
-                    if (targetTime <= now) {
+                    let targetTime = new Date(cityNow);
+                    targetTime.setHours(h, m, 0, 0);
+                    
+                    if (targetTime <= cityNow) {
                         targetTime.setDate(targetTime.getDate() + 1);
                     }
                     
-                    const diff = targetTime - now;
+                    const diff = targetTime - cityNow;
                     
                     if (diff <= 0) {
                         el.textContent = '00:00:00:00';
@@ -918,6 +1263,15 @@
                     const secs = Math.floor((diff % (1000 * 60)) / 1000);
                     
                     el.textContent = `${pad(days)}:${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+                    
+                    // Send notification if less than 5 minutes
+                    if (notificationEnabled && diff > 0 && diff < 300000 && diff > 290000) {
+                        const eventName = type === 'se' ? 'Sehri ends' : 'Iftar';
+                        new Notification(`${eventName} in 5 minutes!`, {
+                            body: `${eventName} time: ${timeStr}`,
+                            icon: '/static/icons/icon-192x192.png'
+                        });
+                    }
                 });
             });
         }

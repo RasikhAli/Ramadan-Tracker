@@ -1,71 +1,30 @@
 """
-Prayer Time Service Layer
-Handles all prayer time calculations and API interactions.
+Prayer Time Service
+Handles prayer time fetching from AlAdhan API.
+
+IMPORTANT: 
+- Hanafi and Shafi times are fetched from AlAdhan API
+- Jaffari times are DERIVED from Hanafi times (handled by FiqhService)
+- Sehri ends EXACTLY at Fajr time (no arbitrary subtraction)
+- Iftar is EXACTLY at Maghrib time (no manual offsets)
 """
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import pytz
 import httpx
 import logging
 
+from app.services.fiqh_service import FiqhService, JAFFARI_SEHRI_OFFSET_MINUTES, JAFFARI_IFTAR_OFFSET_MINUTES
+
 logger = logging.getLogger(__name__)
-
-# AlAdhan API Method IDs
-ALADHAN_METHODS = {
-    "jafari": 0,        # Shia Ithna-Ashari, Leva Institute, Qum
-    "karachi": 1,       # University of Islamic Sciences, Karachi
-    "isna": 2,          # Islamic Society of North America
-    "mwl": 3,           # Muslim World League
-    "makkah": 4,        # Umm Al-Qura University, Makkah
-    "egypt": 5,         # Egyptian General Authority of Survey
-    "tehran": 7,        # Institute of Geophysics, University of Tehran
-    "gulf": 8,          # Gulf Region
-    "kuwait": 9,        # Kuwait
-    "qatar": 10,        # Qatar
-    "singapore": 11,    # Majlis Ugama Islam Singapura
-    "france": 12,       # Union Organization islamic de France
-    "turkey": 13,       # Diyanet İşleri Başkanlığı
-    "russia": 14,       # Spiritual Administration of Muslims of Russia
-}
-
-# AlAdhan School IDs (for Asr calculation)
-ALADHAN_SCHOOLS = {
-    "shafi": 0,         # Shafi, Maliki, Hanbali (standard)
-    "hanafi": 1,        # Hanafi
-}
+logger.setLevel(logging.WARNING)
 
 
 class PrayerTimeService:
-    """Service for fetching and calculating prayer times."""
+    """Service for fetching prayer times from AlAdhan API."""
     
     CACHE: Dict[str, Any] = {}
     CACHE_ENABLED = True
-    
-    @staticmethod
-    def get_fiqh_config(fiqh_method: str) -> Tuple[int, int]:
-        """
-        Get AlAdhan method and school parameters for a given fiqh method.
-        
-        Args:
-            fiqh_method: One of 'hanafi', 'shafi', 'jaffari'
-        
-        Returns:
-            Tuple of (method_id, school_id)
-        """
-        if fiqh_method == "jaffari":
-            # Jafari (Shia) - uses Leva Institute calculations
-            return (ALADHAN_METHODS["jafari"], ALADHAN_SCHOOLS["shafi"])
-        elif fiqh_method == "hanafi":
-            # Hanafi - uses Karachi method with Hanafi Asr
-            return (ALADHAN_METHODS["karachi"], ALADHAN_SCHOOLS["hanafi"])
-        else:
-            # Shafi/Maliki/Hanbali - uses Karachi method with Shafi Asr
-            return (ALADHAN_METHODS["karachi"], ALADHAN_SCHOOLS["shafi"])
-    
-    @staticmethod
-    def get_cache_key(lat: float, lon: float, date: str, method: int, school: int) -> str:
-        """Generate a cache key for prayer times."""
-        return f"{lat:.4f},{lon:.4f},{date},{method},{school}"
     
     @staticmethod
     def convert_to_12_hour(time_24: str) -> str:
@@ -85,85 +44,9 @@ class PrayerTimeService:
             return time_24
     
     @staticmethod
-    def parse_time_to_datetime(time_str: str, date_str: str, timezone_str: str) -> Optional[datetime]:
-        """
-        Parse a time string (HH:MM) into a timezone-aware datetime object.
-        
-        Args:
-            time_str: Time in HH:MM format
-            date_str: Date in DD-MM-YYYY format
-            timezone_str: Timezone string (e.g., "Asia/Karachi")
-        
-        Returns:
-            Timezone-aware datetime object or None if parsing fails
-        """
-        try:
-            tz = pytz.timezone(timezone_str)
-            day, month, year = map(int, date_str.split('-'))
-            hours, minutes = map(int, time_str.split(':'))
-            
-            dt = datetime(year, month, day, hours, minutes, 0)
-            return tz.localize(dt)
-        except Exception as e:
-            logger.error(f"Error parsing time '{time_str}' with date '{date_str}': {e}")
-            return None
-    
-    @staticmethod
-    def calculate_countdown(target_time: datetime, current_time: datetime) -> Dict[str, int]:
-        """
-        Calculate countdown between current time and target time.
-        Pure function - no side effects.
-        
-        Args:
-            target_time: Target datetime (timezone-aware)
-            current_time: Current datetime (timezone-aware, same timezone)
-        
-        Returns:
-            Dictionary with hours, minutes, seconds remaining
-        """
-        # Make sure both times are timezone-aware
-        if target_time.tzinfo is None or current_time.tzinfo is None:
-            logger.warning("Countdown called with naive datetime objects")
-        
-        if target_time <= current_time:
-            # Target has passed, calculate for next day
-            target_time = target_time + timedelta(days=1)
-        
-        diff = target_time - current_time
-        total_seconds = int(diff.total_seconds())
-        
-        if total_seconds < 0:
-            total_seconds = 0
-        
-        hours = total_seconds // 3600
-        minutes = (total_seconds % 3600) // 60
-        seconds = total_seconds % 60
-        
-        return {
-            "hours": hours,
-            "minutes": minutes,
-            "seconds": seconds,
-            "total_seconds": total_seconds
-        }
-    
-    @staticmethod
-    def get_current_time_in_timezone(timezone_str: str) -> datetime:
-        """
-        Get current time in the specified timezone.
-        
-        Args:
-            timezone_str: Timezone string (e.g., "Asia/Karachi")
-        
-        Returns:
-            Timezone-aware datetime object
-        """
-        tz = pytz.timezone(timezone_str)
-        return datetime.now(tz)
-    
-    @staticmethod
-    def format_date_for_api(dt: datetime) -> str:
-        """Format datetime to DD-MM-YYYY format for AlAdhan API."""
-        return dt.strftime("%d-%m-%Y")
+    def get_cache_key(lat: float, lon: float, date: str, method: int, school: int) -> str:
+        """Generate a cache key for prayer times."""
+        return f"{lat:.4f},{lon:.4f},{date},{method},{school}"
     
     async def fetch_from_aladhan(
         self,
@@ -183,15 +66,12 @@ class PrayerTimeService:
             lon: Longitude
             date: Date in DD-MM-YYYY format
             timezone: Timezone string
-            method: Calculation method ID
-            school: School ID (0=Shafi, 1=Hanafi)
+            method: Calculation method ID (1 = Karachi)
+            school: School ID (0 = Shafi, 1 = Hanafi)
             timeout: Request timeout in seconds
         
         Returns:
             Raw API response data
-        
-        Raises:
-            HTTPException: If API request fails
         """
         cache_key = self.get_cache_key(lat, lon, date, method, school)
         
@@ -234,7 +114,7 @@ class PrayerTimeService:
                 if self.CACHE_ENABLED:
                     self.CACHE[cache_key] = data
                 
-                logger.info(f"AlAdhan API Response: {data.get('data', {}).get('timings', {})}")
+                logger.info(f"AlAdhan API Response timings: {data.get('data', {}).get('timings', {})}")
                 return data
                 
         except httpx.RequestError as e:
@@ -248,10 +128,13 @@ class PrayerTimeService:
         date: str,
         timezone: str,
         fiqh_method: str,
+        calculation_method: str = 'karachi',
         include_debug: bool = False
     ) -> Dict[str, Any]:
         """
         Get prayer times for a specific location and fiqh method.
+        
+        For Jaffari: Times are derived from Hanafi using fixed offsets.
         
         Args:
             lat: Latitude
@@ -259,13 +142,18 @@ class PrayerTimeService:
             date: Date in DD-MM-YYYY format
             timezone: Timezone string
             fiqh_method: One of 'hanafi', 'shafi', 'jaffari'
+            calculation_method: One of 'mwl', 'karachi', 'umm_al_qura', 'isna'
             include_debug: Whether to include debug information
         
         Returns:
             Processed prayer times data
         """
-        method, school = self.get_fiqh_config(fiqh_method)
+        # Get fiqh configuration
+        fiqh_config = FiqhService.get_fiqh_method_config(fiqh_method, calculation_method)
+        method = fiqh_config['method']
+        school = fiqh_config['school']
         
+        # Fetch from API
         raw_data = await self.fetch_from_aladhan(
             lat=lat,
             lon=lon,
@@ -278,14 +166,20 @@ class PrayerTimeService:
         timings = raw_data.get("data", {}).get("timings", {})
         meta = raw_data.get("data", {}).get("meta", {})
         
-        # Sehri ends at Fajr - use directly from API
+        # Get Fajr and Maghrib times
         fajr_time = timings.get("Fajr", "")
-        # Iftar is at Maghrib - use directly from API
         maghrib_time = timings.get("Maghrib", "")
         
-        # Parse times to datetime for countdown
-        fajr_dt = self.parse_time_to_datetime(fajr_time, date, timezone)
-        maghrib_dt = self.parse_time_to_datetime(maghrib_time, date, timezone)
+        # For Jaffari, apply offsets to derive times
+        if fiqh_method == "jaffari":
+            jaffari_sehri, jaffari_iftar = FiqhService.calculate_jaffari_times(fajr_time, maghrib_time)
+            sehri_time = jaffari_sehri
+            iftar_time = jaffari_iftar
+            logger.info(f"Jaffari derived: Sehri={sehri_time}, Iftar={iftar_time}")
+        else:
+            # For Hanafi and Shafi, Sehri = Fajr, Iftar = Maghrib
+            sehri_time = fajr_time
+            iftar_time = maghrib_time
         
         result = {
             "date": date,
@@ -311,20 +205,18 @@ class PrayerTimeService:
                 "Maghrib": self.convert_to_12_hour(maghrib_time),
                 "Isha": self.convert_to_12_hour(timings.get("Isha", "")),
             },
-            "sehri_ends": fajr_time,
-            "sehri_ends_12h": self.convert_to_12_hour(fajr_time),
-            "iftar": maghrib_time,
-            "iftar_12h": self.convert_to_12_hour(maghrib_time),
-            "fajr_datetime": fajr_dt.isoformat() if fajr_dt else None,
-            "maghrib_datetime": maghrib_dt.isoformat() if maghrib_dt else None,
+            "sehri_ends": sehri_time,
+            "sehri_ends_12h": self.convert_to_12_hour(sehri_time),
+            "iftar": iftar_time,
+            "iftar_12h": self.convert_to_12_hour(iftar_time),
+            "is_derived": fiqh_method == "jaffari",
         }
         
         if include_debug:
             result["debug"] = {
                 "raw_timings": timings,
                 "meta": meta,
-                "fajr_parsed": fajr_dt.isoformat() if fajr_dt else None,
-                "maghrib_parsed": maghrib_dt.isoformat() if maghrib_dt else None,
+                "fiqh_config": fiqh_config,
             }
         
         return result

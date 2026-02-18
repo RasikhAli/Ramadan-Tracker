@@ -1,222 +1,160 @@
-# Ramadan Sehri & Iftar Tracker 🌙
+# 🌙 Ramadan Countdown
 
-A modern, responsive web application for tracking Sehri and Iftar times during Ramadan with multi-fiqh support. Built with FastAPI and vanilla HTML/CSS/JS.
+A responsive web application for tracking Sehri (Suhoor) and Iftar times during Ramadan with multi-fiqh support, Qibla direction, and PWA capabilities.
 
-![Ramadan Countdown](https://img.shields.io/badge/Ramadan-2026-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![Ramadan Countdown](app/static/icons/icon.svg)
 
 ## ✨ Features
 
-### Multi-Fiqh Countdown
-- **Compare prayer times across three Islamic schools of jurisprudence:**
-  - Hanafi
-  - Shafi / Maliki / Hanbali
-  - Jaffari (Shia)
-- Side-by-side display of Sehri end times and Iftar times for each method
-- Visual color-coding: Green (Hanafi), Purple (Shafi), Pink (Jaffari)
+### 🕐 Core Features
+- **Dynamic Countdown Timer** for Sehri (Fajr) and Iftar (Maghrib)
+- **Real-time updates** that reset daily
+- **Multi-Fiqh Support**: Hanafi, Shafi/Maliki/Hanbali, and Jaffari (Shia)
 
-### Smart Location Detection
-- Auto-detect user location via browser timezone and IP geolocation
-- Manual country/city/timezone selection
-- Support for 39+ countries and 200+ cities worldwide
-- Search functionality to quickly find any city
+### 📐 Calculation Methods
+- **Muslim World League (MWL)**
+- **University of Islamic Sciences, Karachi**
+- **Umm al-Qura University, Makkah**
+- **Islamic Society of North America (ISNA)**
 
-### Prayer Times
-- Uses the Aladhan API for reliable prayer time calculations
-- Different calculation methods for each fiqh:
-  - Hanafi: Later Asr time (shadow length method)
-  - Jaffari: Earlier Fajr, later Iftar (+10 minutes)
-  - Shafi/Maliki/Hanbali: Standard calculation
-- Toggle between 12-hour (AM/PM) and 24-hour formats
+### 🌍 Location Features
+- **Auto-detect location** using browser Geolocation API
+- **Manual location selection** with Country/City dropdowns
+- **Custom coordinates input** for precise location
+- **Timezone handling** with auto-detection or manual selection
 
-### Beautiful Duas Section
-- **Two authentic Iftar duas** with:
-  - Arabic text (elegant Amiri font)
-  - English meaning
-  - Transliteration
-  - Source references (Sunan Abi Dawud)
-- **One Sehri intention dua** with scholarly note about niyyah
-- Copy-to-clipboard functionality
-- Expandable card design
+### 📅 Date Display
+- **Hijri date** with automatic conversion
+- **Ramadan day highlight** when in Ramadan month
+- **Gregorian date** for reference
 
-### Modern UI/UX
-- **Calm, spiritual aesthetic** with deep navy/gold color palette
-- Glassmorphism card effects with backdrop blur
-- Animated starfield background
-- Dark/Light theme toggle with smooth transitions
-- Responsive design for mobile, tablet, and desktop
-- Ultra-wide screen support (up to 1400px max-width)
-- Thumb-friendly buttons and large tap targets
-- WCAG-compliant accessibility features
+### 🧭 Qibla Direction
+- **Compass display** with direction indicator
+- **Distance to Kaaba** in kilometers
+- **Compass direction** (N, NE, E, etc.)
 
-## 📸 Screenshots
+### 📱 PWA Support
+- **Installable** on mobile and desktop
+- **Offline support** with service worker
+- **Push notifications** for Sehri and Iftar reminders
 
-### Dark Mode
-![Ramadan Tracker Dark Mode](https://via.placeholder.com/800x450/0f1729/f0c14b?text=Ramadan+Tracker+Dark+Mode)
-*Deep navy background with gold accents and animated starfield*
+### 🌐 Multi-Language
+- **English**
+- **اردو (Urdu)**
+- **العربية (Arabic)**
 
-### Light Mode
-![Ramadan Tracker Light Mode](https://via.placeholder.com/800x450/fefcf8/b45309?text=Ramadan+Tracker+Light+Mode)
-*Warm cream background with lantern motifs*
+### 🤲 Duas Section
+Authentic duas with Arabic text, transliteration, and translation:
+- Iftar Dua 1 (Sunan Abi Dawud 2358)
+- Iftar Dua 2 (Sunan Abi Dawud 2357)
+- Sehri Intention (with scholarly note)
 
-### Mobile View
-![Ramadan Tracker Mobile](https://via.placeholder.com/400x800/1a2744/34d399?text=Mobile+View)
-*Responsive design with sticky countdown*
+## 🛠️ Tech Stack
 
-## 🎨 UI/UX Design Details
+- **Backend**: FastAPI (Python)
+- **Frontend**: Vanilla JavaScript, HTML5, CSS3
+- **Styling**: Custom CSS with CSS Variables
+- **Prayer Times API**: AlAdhan API
+- **Location**: Browser Geolocation API
+- **State Management**: LocalStorage
 
-### Color Coding for Fiqh Methods
-| Fiqh Method | Color | Hex Code | Meaning |
-|-------------|-------|----------|---------|
-| Hanafi | Green | #34d399 | Represents the dominant school in South Asia |
-| Shafi/Maliki/Hanbali | Purple | #a78bfa | Represents the traditional Sunni schools |
-| Jaffari (Shia) | Pink | #f472b6 | Represents the Shia school |
+## 📋 Prerequisites
 
-### Countdown Animations
-- **Sehri Countdown**: Blue glow effect (#60a5fa)
-- **Iftar Countdown**: Amber glow effect (#fbbf24)
-- **Active Countdown**: Highlighted border with pulsing animation
-- **Time Format**: DD:HH:MM:SS for precision
-
-### Dua Display
-- **Arabic Text**: Amiri font for elegant calligraphy-style rendering
-- **English Meaning**: Clear, readable translation
-- **Transliteration**: Phonetic guide for pronunciation
-- **Source**: Hadith reference (Sunan Abi Dawud)
-- **Copy Feature**: One-click clipboard copy for easy sharing
-
-### Responsive Breakpoints
-| Device | Max Width | Layout |
-|--------|-----------|--------|
-| Mobile | 480px | Single column, sticky countdown |
-| Tablet | 768px | Two column grid |
-| Desktop | 1024px | Three column fiqh cards |
-| Ultra-wide | 1400px | Max content width with margins |
-
-## 🚀 What's New in This Version
-
-### Multi-Fiqh Countdown Logic
-- **Display Order:** Jaffari → Hanafi → Shafi (for easy comparison)
-- **Timezone-Aware Countdown:** All countdowns properly handle timezone differences
-- **Fixed NaN Bug:** Countdown timers now properly validate time values
-- **Iftar Times:** Jaffari method shows +10 minutes for Maghrib as per Shia fiqh
-
-### UI/UX Improvements
-- ✅ New project title: "Ramadan Sehri & Iftar Tracker"
-- ✅ Enhanced light mode with warm cream/gold gradients
-- ✅ Lantern motifs in light mode (replaces stars)
-- ✅ Improved typography and contrast in light mode
-- ✅ Smooth toggle transition between dark/light themes
-- ✅ Multi-fiqh comparison view (Jaffari → Hanafi → Shafi)
-- ✅ Real-time countdown timers for all three methods
-- ✅ Enhanced duas section with English meanings
-- ✅ Animated starfield background (dark) / lantern glow (light)
-- ✅ Improved mobile responsiveness
-- ✅ Sticky countdown on mobile devices
-- ✅ Copy-to-clipboard for duas
-- ✅ Glassmorphism card effects
-- ✅ Responsive layout (mobile → desktop → ultrawide)
-
-## 📱 Supported Regions
-
-### Countries Include:
-- Pakistan, India, Bangladesh, Indonesia, Malaysia
-- Saudi Arabia, UAE, Qatar, Kuwait, Bahrain, Oman
-- Turkey, Egypt, Morocco, Nigeria, Kenya, South Africa
-- United Kingdom, United States, Canada, Australia
-- Germany, France, Netherlands, Belgium, Spain, Italy
-- And many more...
-
-### Timezones
-All major timezones supported with automatic DST handling.
-
-## 🕰️ Multi-Fiqh Countdown Explanation
-
-Different Islamic schools of jurisprudence (madhabs) have slightly different methods for calculating prayer times:
-
-| School | Fajr | Asr | Maghrib (Iftar) |
-|--------|------|-----|-----------------|
-| **Hanafi** | Standard | Later (shadow length) | Standard |
-| **Shafi/Maliki/Hanbali** | Standard | Standard | Standard |
-| **Jaffari (Shia)** | ~20 min earlier | Later | +10 min |
-
-This app displays all three methods side-by-side so you can choose the timing that follows your school's methodology.
-
-## 📊 Calculation Methods Note
-
-The prayer times are calculated using the Aladhan API with the following parameters:
-
-| Fiqh Method | Calculation Method | School | Fajr Angle | Maghrib Angle |
-|-------------|-------------------|--------|------------|---------------|
-| Hanafi | 2 (Muslim World League) | 1 (Hanafi) | 18° | 18° (+18 min) |
-| Shafi/Maliki/Hanbali | 2 (Muslim World League) | 0 (Standard) | 18° | 18° |
-| Jaffari (Shia) | 8 (Institute of Geophysics, Tehran) | 1 (Jaffari) | 16° | 14° (+10 min) |
-
-**Note:** The Jaffari Iftar time includes an explicit +10 minute adjustment as per Shia fiqh practice.
-
-## 🤲 Duas Displayed in App
-
-### Iftar Duas
-
-**Dua 1 (Authentic)**
-> اللَّهُمَّ إِنِّي لَكَ صُمْتُ وَبِكَ آمَنْتُ وَعَلَىٰ رِزْقِكَ أَفْطَرْتُ
-
-*Meaning:* O Allah, I fasted for You and believed in You and I break my fast with Your sustenance.
-
-*Source:* Sunan Abi Dawud (2358)
-
-**Dua 2 (Authentic)**
-> ذَهَبَ الظَّمَأُ، وَابْتَلَّتِ الْعُرُوقُ، وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللَّهُ
-
-*Meaning:* The thirst is gone, the veins are moist, and the reward is established, insha'Allah.
-
-*Source:* Sunan Abi Dawud (2357)
-
-### Sehri Intention
-
-> وَبِصَوْمِ غَدٍ نَّوَيْتُ مِنْ شَهْرِ رَمَضَانَ
-
-*Meaning:* I intend to fast tomorrow in the month of Ramadan.
-
-*Note:* The intention (niyyah) for fasting is an action of the heart. Scholars agree it should be made before the time of Sehri ends, but verbal recitation is optional. The intention need not be spoken aloud.
-
-## 🛠️ Installation
-
-### Prerequisites
 - Python 3.8+
-- pip
+- pip (Python package manager)
 
-### Setup
+## 🚀 Installation & Deployment
 
-1. Clone the repository:
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/RasikhAli/Ramadan-Tracker.git
+   cd Ramadan-Tracker
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # Linux/Mac
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the application**
+   ```bash
+   python run.py
+   ```
+
+5. **Open in browser**
+   ```
+   http://localhost:8000
+   ```
+
+### Production Deployment
+
+#### Option 1: Using Gunicorn (Linux/Mac)
+
 ```bash
-git clone <repository-url>
-cd ramadan-web
+pip install gunicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
 ```
 
-2. Create virtual environment:
+#### Option 2: Using Uvicorn
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
+pip install uvicorn[standard]
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-3. Install dependencies:
+#### Option 3: Docker
+
+1. **Create Dockerfile**
+   ```dockerfile
+   FROM python:3.11-slim
+   
+   WORKDIR /app
+   
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+   
+   COPY . .
+   
+   EXPOSE 8000
+   
+   CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+   ```
+
+2. **Build and run**
+   ```bash
+   docker build -t ramadan-countdown .
+   docker run -p 8000:8000 ramadan-countdown
+   ```
+
+#### Option 4: Deploy to Cloud
+
+**Heroku:**
 ```bash
-pip install -r requirements.txt
+# Create Procfile
+echo "web: uvicorn app.main:app --host 0.0.0.0 --port $PORT" > Procfile
+
+# Deploy
+heroku create your-app-name
+git push heroku main
 ```
 
-4. Run the server:
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-# or
-python run.py
-```
-
-5. Open browser:
-```
-http://localhost:8000
-```
+**Railway/Render:**
+- Connect your GitHub repository
+- Set build command: `pip install -r requirements.txt`
+- Set start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 ## 📁 Project Structure
 
@@ -224,83 +162,104 @@ http://localhost:8000
 ramadan-web/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py           # FastAPI backend
-│   ├── api/              # API routes (if needed)
-│   ├── data/
+│   ├── main.py              # FastAPI application and routes
+│   ├── templates/
+│   │   └── index.html       # Main HTML template
+│   ├── static/
+│   │   ├── manifest.json    # PWA manifest
+│   │   ├── sw.js           # Service worker
+│   │   └── icons/
+│   │       └── icon.svg    # App icon
+│   ├── services/
 │   │   ├── __init__.py
-│   │   └── cities.py     # City/timezone data
-│   ├── static/           # Static files
-│   └── templates/
-│       └── index.html    # Frontend UI
+│   │   ├── city_service.py      # City data operations
+│   │   ├── prayer_service.py    # Prayer time fetching
+│   │   ├── fiqh_service.py      # Fiqh calculations
+│   │   └── countdown_service.py # Countdown logic
+│   └── data/
+│       └── cities.py       # City data module
+├── data/
+│   ├── cities.json         # City coordinates and timezones
+│   └── countries.json      # Country data
+├── tests/
+│   └── test_prayer_service.py
+├── scripts/
+│   └── import_cities.py    # City data import script
 ├── requirements.txt
 ├── run.py
 └── README.md
 ```
 
-## 🎨 Design System
+## 🔌 API Endpoints
 
-### Colors
-| Purpose | Light Mode | Dark Mode |
-|---------|------------|-----------|
-| Background | #fefcf8 (warm cream) | #0f1729 |
-| Card | #ffffff | #1a2744 |
-| Primary (Gold) | #f0c14b | #f0c14b |
-| Sehri (Blue) | #60a5fa | #60a5fa |
-| Iftar (Amber) | #fbbf24 | #fbbf24 |
-| Hanafi (Green) | #34d399 | #34d399 |
-| Shafi (Purple) | #a78bfa | #a78bfa |
-| Jaffari (Pink) | #f472b6 | #f472b6 |
+### Location Detection
+- `GET /api/detect-location` - Detect location from timezone
+- `GET /api/detect-location-from-coords` - Detect from coordinates
 
-### Light Mode Features
-- Warm cream background with subtle gold gradients
-- Soft lantern motifs in place of stars
-- Gentle shadows for depth
-- Maintained color consistency for fiqh methods
-- Smooth theme toggle transition
+### City Data
+- `GET /api/countries` - List all countries
+- `GET /api/cities/{country}` - Get cities for a country
+- `GET /api/city-data` - Get city coordinates
+- `GET /api/search-city` - Search for a city
 
-### Typography
-- **UI Text:** DM Sans (Google Fonts)
-- **Arabic Text:** Amiri (Google Fonts)
+### Prayer Times
+- `GET /api/prayer-times` - Get prayer times for a city
+- `GET /api/prayer-times-all` - Get times for all fiqh methods
+- `GET /api/prayer-times-by-coords` - Get times by coordinates
 
-### Layout
-- Mobile-first responsive design
-- CSS Grid for complex layouts
-- Flexbox for component alignment
-- CSS Variables for theming
-- Glassmorphism effects
+### Other
+- `GET /api/hijri-date` - Get Hijri date
+- `GET /api/qibla` - Get Qibla direction
+- `GET /api/fiqh-methods` - Get fiqh method info
+- `GET /api/health` - Health check
 
-## 🔧 API Endpoints
+## 🧪 Testing
 
-| Endpoint | Description |
-|-----------|-------------|
-| `GET /` | Main page |
-| `GET /api/detect-location` | Auto-detect location |
-| `GET /api/datas` | Get all countries/cities/timezones |
-| `GET /api/search-city` | Search for a city |
-| `GET /api/prayer-times` | Get prayer times for one method |
-| `GET /api/prayer-times-all` | Get prayer times for all three methods |
+```bash
+# Run tests
+pytest tests/
 
-## 📱 Browser Support
+# Run with coverage
+pytest --cov=app tests/
+```
 
-- Chrome 80+
-- Firefox 75+
-- Safari 13+
-- Edge 80+
+## 📝 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | 8000 |
+| `HOST` | Server host | 0.0.0.0 |
+
+### Customization
+
+- **Add more cities**: Edit `data/cities.json` or use `scripts/import_cities.py`
+- **Modify calculation methods**: Edit `app/services/fiqh_service.py`
+- **Change theme colors**: Edit CSS variables in `app/templates/index.html`
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 👤 Developer
-
-- **GitHub:** [RasikhAli](https://github.com/RasikhAli)
-- **LinkedIn:** [Rasikh Ali](https://www.linkedin.com/in/rasikh-ali/)
-- **Repository:** [Ramadan-Tracker](https://github.com/RasikhAli/Ramadan-Tracker)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+- [AlAdhan API](https://aladhan.com/prayer-times-api) for prayer time calculations
+- [GeoNames](http://www.geonames.org/) for city data
+- All contributors and testers
+
+## 📞 Support
+
+For issues and feature requests, please use the [GitHub Issues](https://github.com/RasikhAli/Ramadan-Tracker/issues) page.
 
 ---
 
-*May Allah accept our fasting and prayers during Ramadan. Ameen.* 🤲🌙
+**Developed with ❤️ by [Rasikh Ali](https://github.com/RasikhAli)**
