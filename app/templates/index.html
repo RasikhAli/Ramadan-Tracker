@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramadan Sehri & Iftar Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --color-bg: #0f1729;
+            --color-bg-elevated: #1a2744;
+            --color-bg-card: rgba(26, 39, 68, 0.7);
+            --color-text: #f1f5f9;
+            --color-text-muted: #94a3b8;
+            --color-text-dim: #64748b;
+            --color-primary: #f0c14b;
+            --color-primary-glow: rgba(240, 193, 75, 0.3);
+            --color-sehri: #60a5fa;
+            --color-sehri-glow: rgba(96, 165, 250, 0.3);
+            --color-iftar: #fbbf24;
+            --color-iftar-glow: rgba(251, 191, 36, 0.3);
+            --color-hanafi: #34d399;
+            --color-shafi: #a78bfa;
+            --color-jaffari: #f472b6;
+            --color-border: rgba(148, 163, 184, 0.15);
+            --color-border-hover: rgba(148, 163, 184, 0.25);
+            
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            
+            --font-ui: 'DM Sans', sans-serif;
+            --font-arabic: 'Amiri', serif;
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --backdrop-blur: 20px;
+            
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.3s ease;
+        }
+
+        [data-theme="light"] {
+            --color-bg: #fefcf8;
+            --color-bg-elevated: #ffffff;
+            --color-bg-card: rgba(255, 255, 255, 0.85);
+            --color-text: #1e293b;
+            --color-text-muted: #64748b;
+            --color-text-dim: #94a3b8;
+            --color-border: rgba(148, 163, 184, 0.25);
+            --color-border-hover: rgba(100, 116, 139, 0.4);
+            --shadow-card: 0 8px 32px rgba(139, 90, 43, 0.1);
+            --color-primary-glow: rgba(240, 193, 75, 0.2);
+            --color-sehri-glow: rgba(96, 165, 250, 0.15);
+            --color-iftar-glow: rgba(251, 191, 36, 0.15);
+        }
+
+        [data-theme="light"] body::before {
+            background: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 248, 225, 0.6), transparent),
+                radial-gradient(ellipse 50% 30% at 90% 10%, rgba(255, 235, 205, 0.4), transparent),
+                radial-gradient(ellipse 40% 40% at 10% 90%, rgba(255, 245, 238, 0.5), transparent);
+        }
+
+        [data-theme="light"] .stars { opacity: 0.15; }
+        [data-theme="light"] .star { 
+            background: #b45309; 
+            box-shadow: 0 0 6px #f0c14b; 
+            width: 4px; height: 6px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+        }
+        [data-theme="light"] .star::after {
+            content: '';
+            position: absolute;
+            width: 6px; height: 8px;
+            background: linear-gradient(to bottom, #f0c14b, #fbbf24);
+            border-radius: 50% 50% 20% 20%;
+            top: -8px; left: -1px;
+            opacity: 0.8;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 16px; scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--color-bg);
+            color: var(--color-text);
+            min-height: 100vh;
+            line-height: 1.6;
+            transition: background var(--transition-normal), color var(--transition-normal);
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(240, 193, 75, 0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(96, 165, 250, 0.06), transparent),
+                radial-gradient(ellipse 60% 40% at 0% 80%, rgba(251, 191, 36, 0.06), transparent);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .stars { position: fixed; inset: 0; pointer-events: none; z-index: -1; opacity: 0.5; }
+        .star {
+            position: absolute; width: 2px; height: 2px;
+            background: white; border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .app-container { max-width: 1400px; margin: 0 auto; padding: var(--space-lg); }
+
+        .header { text-align: center; padding: var(--space-2xl) 0 var(--space-xl); }
+        .header-icon {
+            font-size: 3.5rem; color: var(--color-primary); margin-bottom: var(--space-md);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow { from { filter: drop-shadow(0 0 10px var(--color-primary-glow)); } to { filter: drop-shadow(0 0 25px var(--color-primary-glow)); } }
+        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: var(--space-xs); letter-spacing: -0.02em; }
+        .header-subtitle { font-size: 1.1rem; color: var(--color-text-muted); }
+
+        .theme-toggle {
+            position: fixed; top: var(--space-lg); right: var(--space-lg);
+            background: var(--color-bg-card); backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--color-border); border-radius: 50%;
+            width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition-normal); z-index: 100;
+            color: var(--color-primary); font-size: 1.2rem;
+        }
+        .theme-toggle:hover { background: var(--color-bg-elevated); transform: scale(1.05); }
+
+        .card {
+            background: var(--color-bg-card); backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--color-border); border-radius: var(--radius-xl);
+            padding: var(--space-xl); margin-bottom: var(--space-lg); box-shadow: var(--shadow-card);
+            transition: all var(--transition-normal);
+        }
+        .card:hover { border-color: var(--color-border-hover); }
+        .card-title {
+            font-size: 1rem; font-weight: 600; color: var(--color-text-muted);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-lg);
+            display: flex; align-items: center; gap: var(--space-sm);
+        }
+        .card-title i { color: var(--color-primary); }
+
+        .location-banner {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: var(--space-md); padding: var(--space-md) var(--space-lg);
+            background: linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-card) 100%);
+            border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+            margin-bottom: var(--space-lg);
+        }
+        .location-info { display: flex; align-items: center; gap: var(--space-md); }
+        .location-icon {
+            width: 44px; height: 44px; background: var(--color-primary-glow); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--color-primary); font-size: 1.1rem;
+        }
+        .location-text { display: flex; flex-direction: column; }
+        .location-city { font-weight: 600; }
+        .location-date { font-size: 0.85rem; color: var(--color-text-muted); }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+            padding: var(--space-md) var(--space-xl); border: none; border-radius: var(--radius-md);
+            font-family: var(--font-ui); font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .btn-primary {
+            width: 100%; background: linear-gradient(135deg, var(--color-primary) 0%, #d4a843 100%);
+            color: var(--color-bg); margin-top: var(--space-lg);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--color-primary-glow); }
+        .btn-text { background: transparent; border: 1px solid var(--color-border); color: var(--color-text-muted); padding: var(--space-sm) var(--space-md); font-size: 0.9rem; }
+        .btn-text:hover { background: var(--color-bg-elevated); color: var(--color-text); }
+
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md); }
+        .form-group { display: flex; flex-direction: column; gap: var(--space-xs); }
+        .form-group label { font-size: 0.8rem; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-group select {
+            padding: var(--space-md); background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+            border-radius: var(--radius-md); color: var(--color-text); font-family: var(--font-ui); font-size: 0.95rem;
+            cursor: pointer; transition: var(--transition-fast); appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px;
+        }
+        .form-group select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+        .form-group select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) 0; border-top: 1px solid var(--color-border); margin-top: var(--space-md); }
+        .toggle-label { font-size: 0.9rem; color: var(--color-text-muted); }
+        .toggle-switch { position: relative; width: 52px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 28px; transition: var(--transition-fast); }
+        .toggle-slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: var(--color-text-muted); border-radius: 50%; transition: var(--transition-fast); }
+        .toggle-switch input:checked + .toggle-slider { background: var(--color-primary); border-color: var(--color-primary); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(24px); background: var(--color-bg); }
+
+        /* Multi-Fiqh Countdown */
+        .fiqh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg); }
+        @media (max-width: 900px) { .fiqh-grid { grid-template-columns: 1fr; } }
+
+        .fiqh-card {
+            background: var(--color-bg-card); backdrop-filter: blur(var(--backdrop-blur));
+            border: 1px solid var(--color-border); border-radius: var(--radius-xl);
+            padding: var(--space-lg); text-align: center; transition: all var(--transition-normal);
+        }
+        .fiqh-card:hover { transform: translateY(-4px); }
+        .fiqh-card.hanafi { border-top: 3px solid var(--color-hanafi); }
+        .fiqh-card.shafi { border-top: 3px solid var(--color-shafi); }
+        .fiqh-card.jaffari { border-top: 3px solid var(--color-jaffari); }
+
+        .fiqh-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: var(--space-md); }
+        .fiqh-card.hanafi .fiqh-label { color: var(--color-hanafi); }
+        .fiqh-card.shafi .fiqh-label { color: var(--color-shafi); }
+        .fiqh-card.jaffari .fiqh-label { color: var(--color-jaffari); }
+
+        .fiqh-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-top: var(--space-md); }
+        .fiqh-time-item { padding: var(--space-sm); background: var(--color-bg-elevated); border-radius: var(--radius-md); }
+        .fiqh-time-label { font-size: 0.7rem; color: var(--color-text-dim); text-transform: uppercase; margin-bottom: 2px; }
+        .fiqh-time-value { font-size: 1.2rem; font-weight: 700; }
+
+        .countdown-section { margin-top: var(--space-lg); }
+        .countdown-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-md); }
+        @media (max-width: 768px) { .countdown-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 480px) { .countdown-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .countdown-card {
+            background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg); padding: var(--space-lg); text-align: center;
+            transition: all var(--transition-normal);
+        }
+        .countdown-card:hover { transform: translateY(-2px); border-color: var(--color-border-hover); }
+        .countdown-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-dim); margin-bottom: var(--space-xs); }
+        .countdown-time { font-size: 1.8rem; font-weight: 700; color: var(--color-text); }
+        .countdown-timer { font-size: 1rem; font-weight: 600; font-family: monospace; color: var(--color-primary); margin-top: var(--space-xs); }
+
+        /* Prayer Grid */
+        .prayer-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-sm); }
+        @media (max-width: 768px) { .prayer-grid { grid-template-columns: repeat(3, 1fr); } }
+        .prayer-item { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); text-align: center; transition: all var(--transition-fast); }
+        .prayer-item:hover { border-color: var(--color-border-hover); transform: translateY(-2px); }
+        .prayer-item.current { background: var(--color-primary-glow); border-color: var(--color-primary); }
+        .prayer-name { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-dim); margin-bottom: var(--space-xs); }
+        .prayer-item.current .prayer-name { color: var(--color-primary); }
+        .prayer-time { font-size: 1rem; font-weight: 700; }
+
+        /* Duas */
+        .duas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--space-lg); }
+        .dua-card { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); transition: all var(--transition-normal); }
+        .dua-card:hover { border-color: var(--color-border-hover); transform: translateY(-2px); }
+        .dua-card.iftar { border-left: 3px solid var(--color-iftar); }
+        .dua-card.sehri { border-left: 3px solid var(--color-sehri); }
+        .dua-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md); }
+        .dua-title { font-size: 0.85rem; font-weight: 600; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .dua-arabic { font-family: var(--font-arabic); font-size: 1.4rem; line-height: 1.8; color: var(--color-text); text-align: right; margin-bottom: var(--space-md); }
+        .dua-meaning { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: var(--space-sm); font-style: italic; }
+        .dua-transliteration { font-style: italic; color: var(--color-text-dim); font-size: 0.85rem; margin-bottom: var(--space-sm); padding-left: var(--space-md); border-left: 2px solid var(--color-border); }
+        .dua-reference { font-size: 0.8rem; color: var(--color-text-dim); }
+        .dua-note { margin-top: var(--space-md); padding: var(--space-sm) var(--space-md); background: rgba(148, 163, 184, 0.1); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--color-text-dim); }
+        .dua-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--color-border); }
+        .btn-icon { width: 36px; height: 36px; padding: 0; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; transition: all var(--transition-fast); display: flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: var(--color-bg-elevated); color: var(--color-primary); border-color: var(--color-primary); }
+
+        /* Loading & Error */
+        .loading, .error-message { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-2xl); text-align: center; }
+        .spinner { width: 48px; height: 48px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: var(--space-md); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-message { color: #ef4444; }
+        .error-message i { font-size: 2.5rem; margin-bottom: var(--space-md); }
+
+        .footer { text-align: center; padding: var(--space-xl) 0; color: var(--color-text-dim); font-size: 0.85rem; }
+        .footer-social { margin-top: var(--space-md); }
+        .footer-social a {
+            display: inline-block;
+            color: var(--color-text-muted);
+            font-size: 1.5rem;
+            margin: 0 var(--space-sm);
+            transition: color var(--transition-fast), transform var(--transition-fast);
+        }
+        .footer-social a:hover {
+            color: var(--color-primary);
+            transform: translateY(-2px);
+        }
+        .footer-dev { margin-top: var(--space-sm); font-size: 0.8rem; }
+        .footer-dev a { color: var(--color-text-muted); text-decoration: underline; }
+        .footer-dev a:hover { color: var(--color-primary); }
+        .hidden { display: none !important; }
+
+        @media (max-width: 640px) {
+            .app-container { padding: var(--space-md); }
+            .header h1 { font-size: 1.8rem; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .duas-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-icon"><i class="fas fa-mosque"></i></div>
+            <h1>Ramadan Sehri & Iftar Tracker</h1>
+            <p class="header-subtitle">Multi-Fiqh Prayer Times & Countdown</p>
+        </header>
+
+        <div class="location-banner" id="locationBanner">
+            <div class="location-info">
+                <div class="location-icon"><i class="fas fa-location-dot"></i></div>
+                <div class="location-text">
+                    <span class="location-city" id="detectedLocation">Detecting location...</span>
+                    <span class="location-date" id="currentDate"></span>
+                </div>
+            </div>
+            <button class="btn btn-text" onclick="showManualSettings()"><i class="fas fa-pen"></i> Change</button>
+        </div>
+
+        <div class="card hidden" id="settingsCard">
+            <h2 class="card-title"><i class="fas fa-sliders"></i> Location Settings</h2>
+            <div class="settings-grid">
+                <div class="form-group"><label for="country">Country</label><select id="country" onchange="loadCities()"><option value="">Select Country</option></select></div>
+                <div class="form-group"><label for="city">City</label><select id="city" onchange="updateCityData()" disabled><option value="">Select City</option></select></div>
+                <div class="form-group"><label for="timezone">Timezone</label><select id="timezone" onchange="fetchAllFiqhTimes()"></select></div>
+            </div>
+            <div class="toggle-row">
+                <span class="toggle-label">Auto-detect timezone</span>
+                <label class="toggle-switch"><input type="checkbox" id="autoTimezoneToggle" onchange="handleAutoTimezone()"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span class="toggle-label">12-hour format</span>
+                <label class="toggle-switch"><input type="checkbox" id="timeFormatToggle" checked onchange="toggleTimeFormat()"><span class="toggle-slider"></span></label>
+            </div>
+            <button class="btn btn-primary" onclick="fetchAllFiqhTimes()"><i class="fas fa-sync-alt"></i> Update Times</button>
+        </div>
+
+        <div id="loadingSection" class="card hidden"><div class="loading"><div class="spinner"></div><p>Loading prayer times...</p></div></div>
+        <div id="errorSection" class="card hidden"><div class="error-message"><i class="fas fa-exclamation-triangle"></i><p id="errorMessage">Unable to fetch prayer times</p><button class="btn btn-primary" style="margin-top:16px;width:auto;" onclick="retryFetch()"><i class="fas fa-redo"></i> Retry</button></div></div>
+
+        <div id="resultsSection" class="hidden">
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-clock"></i> Multi-Fiqh Countdown</h2>
+                <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: var(--space-lg);">Compare Sehri & Iftar times across different Islamic schools of jurisprudence</p>
+                <div class="fiqh-grid" id="fiqhGrid"></div>
+            </div>
+
+            <div class="card countdown-section">
+                <h2 class="card-title"><i class="fas fa-stopwatch"></i> Today's Countdown</h2>
+                <div class="countdown-grid" id="countdownGrid"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-pray"></i> Prayer Times</h2>
+                <div class="prayer-grid" id="prayerGrid"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title"><i class="fas fa-book-quran"></i> Recommended Duas</h2>
+                <div class="duas-grid">
+                    <div class="dua-card iftar">
+                        <div class="dua-header"><span class="dua-title">Iftar Dua - 1</span></div>
+                        <div class="dua-arabic">اللَّهُمَّ إِنِّي لَكَ صُمْتُ وَبِكَ آمَنْتُ وَعَلَىٰ رِزْقِكَ أَفْطَرْتُ</div>
+                        <div class="dua-meaning">O Allah, I fasted for You and believed in You and I break my fast with Your sustenance</div>
+                        <div class="dua-transliteration">Allahumma inni laka sumtu wa bika aamantu wa 'ala rizqika aftartu</div>
+                        <div class="dua-reference">Sunan Abi Dawud 2358</div>
+                        <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
+                    </div>
+                    <div class="dua-card iftar">
+                        <div class="dua-header"><span class="dua-title">Iftar Dua - 2</span></div>
+                        <div class="dua-arabic">ذَهَبَ الظَّمَأُ، وَابْتَلَّتِ الْعُرُوقُ، وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللَّهُ</div>
+                        <div class="dua-meaning">The thirst is gone, the veins are moist, and the reward is established, insha'Allah</div>
+                        <div class="dua-transliteration">Dhahaba adh-dhama'u, wabtallatil-'urooqu, wa thabata al-ajru in shaa Allah</div>
+                        <div class="dua-reference">Sunan Abi Dawud 2357</div>
+                        <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
+                    </div>
+                    <div class="dua-card sehri">
+                        <div class="dua-header"><span class="dua-title">Sehri Intention</span></div>
+                        <div class="dua-arabic">وَبِصَوْمِ غَدٍ نَّوَيْتُ مِنْ شَهْرِ رَمَضَانَ</div>
+                        <div class="dua-meaning">I intend to fast tomorrow in the month of Ramadan</div>
+                        <div class="dua-transliteration">Wa bisawmi ghadin nawaiytu min shahri Ramadan</div>
+                        <div class="dua-reference">Commonly cited in South Asian tradition</div>
+                        <div class="dua-note"><i class="fas fa-info-circle"></i> <strong>Note:</strong> The intention (niyyah) is an action of the heart. Scholars agree it should be made before fasting, but verbal recitation is optional.</div>
+                        <div class="dua-actions"><button class="btn-icon" onclick="copyDua(this)"><i class="fas fa-copy"></i></button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>Ramadan 2026 • prayer times based on your location</p>
+            <div class="footer-social">
+                <a href="https://github.com/RasikhAli/Ramadan-Tracker" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                <a href="https://linkedin.com/in/rasikh-ali/" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+            </div>
+            <p class="footer-dev">Developed by <a href="https://github.com/RasikhAli" target="_blank">Rasikh Ali</a></p>
+        </footer>
+    </div>
+
+    <script>
+        let countriesData = {}, citiesData = {}, allFiqhData = null, countdownInterval = null;
+        let is12HourFormat = true, browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        document.addEventListener('DOMContentLoaded', () => { initTheme(); createStars(); loadInitialData(); detectLocation(); updateCurrentDate(); });
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            document.body.setAttribute('data-theme', saved);
+            document.querySelector('#themeToggle i').className = saved === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.body.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.querySelector('#themeToggle i').className = next === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        });
+
+        function createStars() {
+            const container = document.getElementById('stars');
+            for (let i = 0; i < 500; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                container.appendChild(star);
+            }
+        }
+
+        function updateCurrentDate() {
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        async function detectLocation() {
+            document.getElementById('detectedLocation').textContent = 'Detecting...';
+            try {
+                const res = await fetch(`/api/detect-location?browser_timezone=${encodeURIComponent(browserTimezone)}`);
+                const data = await res.json();
+                if (data.detected_city) {
+                    document.getElementById('detectedLocation').textContent = `${data.detected_city}, ${data.detected_country}`;
+                    await fetchAllFiqhTimesForCity(data.detected_city, data.detected_country);
+                } else { showManualSettings(); }
+            } catch (e) { showManualSettings(); }
+        }
+
+        function showManualSettings() {
+            document.getElementById('locationBanner').classList.add('hidden');
+            document.getElementById('settingsCard').classList.remove('hidden');
+            if (Object.keys(countriesData).length === 0) loadInitialData();
+        }
+
+        async function loadInitialData() {
+            const res = await fetch('/api/datas');
+            const data = await res.json();
+            countriesData = data.countries; citiesData = data.cities_data;
+            const countrySel = document.getElementById('country');
+            countriesData.forEach(c => { countrySel.innerHTML += `<option value="${c}">${c}</option>`; });
+            const tzSel = document.getElementById('timezone');
+            data.timezones.forEach(tz => { tzSel.innerHTML += `<option value="${tz}" ${tz===browserTimezone?'selected':''}>${tz.replace(/_/g,' ')}</option>`; });
+        }
+
+        async function loadCities() {
+            const country = document.getElementById('country').value;
+            const citySel = document.getElementById('city');
+            citySel.innerHTML = '<option value="">Select City</option>';
+            citySel.disabled = true;
+            if (country && citiesData[country]) {
+                Object.keys(citiesData[country].cities).forEach(c => citySel.innerHTML += `<option value="${c}">${c}</option>`);
+                citySel.disabled = false;
+            }
+        }
+
+        function handleAutoTimezone() {
+            document.getElementById('timezone').disabled = document.getElementById('autoTimezoneToggle').checked;
+            if (document.getElementById('country').value && document.getElementById('city').value) fetchAllFiqhTimes();
+        }
+
+        function toggleTimeFormat() {
+            is12HourFormat = document.getElementById('timeFormatToggle').checked;
+            if (allFiqhData) displayResults(allFiqhData);
+        }
+
+        function updateCityData() {
+            const c = document.getElementById('country').value, city = document.getElementById('city').value;
+            if (c && city && citiesData[c]?.cities[city]) document.getElementById('timezone').value = citiesData[c].cities[city].timezone;
+            fetchAllFiqhTimes();
+        }
+
+        async function fetchAllFiqhTimesForCity(city, country) {
+            let tc = country, tcity = city;
+            if (!citiesData[country]) {
+                const s = await fetch(`/api/search-city?query=${encodeURIComponent(city)}`).then(r=>r.json());
+                if (s.results?.length) { tc = s.results[0].country; tcity = s.results[0].city; }
+            }
+            document.getElementById('country').value = tc;
+            await loadCities();
+            document.getElementById('city').value = tcity;
+            fetchAllFiqhTimes();
+        }
+
+        async function fetchAllFiqhTimes() {
+            const country = document.getElementById('country').value, city = document.getElementById('city').value;
+            const tz = document.getElementById('timezone').value, auto = document.getElementById('autoTimezoneToggle').checked;
+            if (!country || !city) { showManualSettings(); return; }
+            showLoading();
+            try {
+                let url = `/api/prayer-times-all?country=${encodeURIComponent(country)}&city=${encodeURIComponent(city)}&format_12h=${is12HourFormat}`;
+                if (!auto) url += `&timezone=${encodeURIComponent(tz)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed');
+                allFiqhData = await res.json();
+                displayResults(allFiqhData);
+                startCountdown();
+            } catch (e) { showError(e.message); }
+        }
+
+        function showLoading() {
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
+            document.getElementById('settingsCard').classList.add('hidden');
+        }
+
+        function showError(msg) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = msg || 'An error occurred';
+        }
+
+        function retryFetch() { fetchAllFiqhTimes(); }
+
+        function displayResults(data) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('locationBanner').classList.remove('hidden');
+            document.getElementById('detectedLocation').textContent = `${data.city}, ${data.country}`;
+
+        // Display order: Jaffari, Hanafi, Shafi
+            const methodOrder = ['jaffari', 'hanafi', 'shafi'];
+            const methodNames = { hanafi: 'Hanafi', shafi: 'Shafi/Maliki/Hanbali', jaffari: 'Jaffari (Shia)' };
+            
+            // Fiqh Grid
+            const fiqh = data.fiqh_times;
+            const fiqhClasses = { hanafi: 'hanafi', shafi: 'shafi', jaffari: 'jaffari' };
+            
+            let fiqhHTML = '';
+            methodOrder.forEach(method => {
+                const m = fiqh[method];
+                fiqhHTML += `
+                    <div class="fiqh-card ${fiqhClasses[method]}">
+                        <div class="fiqh-label">${methodNames[method]}</div>
+                        <div class="fiqh-times">
+                            <div class="fiqh-time-item">
+                                <div class="fiqh-time-label">Sehri Ends</div>
+                                <div class="fiqh-time-value">${m.sehri_ends_12h || m.sehri_ends}</div>
+                            </div>
+                            <div class="fiqh-time-item">
+                                <div class="fiqh-time-label">Iftar</div>
+                                <div class="fiqh-time-value">${m.iftar_12h || m.iftar}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('fiqhGrid').innerHTML = fiqhHTML;
+
+            // Countdown
+            const now = new Date();
+            const getTarget = (timeStr) => { const [h,m] = timeStr.split(':').map(Number); const d = new Date(now); d.setHours(h,m,0,0); if (d<now) d.setDate(d.getDate()+1); return d; };
+            const targets = methodOrder.map(method => ({method, se:getTarget(fiqh[method].sehri_ends), iftar:getTarget(fiqh[method].iftar_12h||fiqh[method].iftar)}));
+            let countdownHTML = '';
+            
+            targets.forEach(item => {
+                const method = item.method;
+                const seDiff = item.se - now, ifDiff = item.iftar - now;
+                const seActive = seDiff > 0 && seDiff < ifDiff;
+                const ifActive = ifDiff > 0 && (ifDiff <= seDiff || seDiff <= 0);
+                countdownHTML += `
+                    <div class="countdown-card" style="${seActive?'border-color:var(--color-sehri)':''} ${ifActive?'border-color:var(--color-iftar)':''}">
+                        <div class="countdown-label">${methodNames[method]} <br> Sehri</div>
+                        <div class="countdown-time">${fiqh[method].sehri_ends_12h||fiqh[method].sehri_ends}</div>
+                        <div class="countdown-timer" id="timer-${method}-se">--:--:--:--</div>
+                    </div>
+                    <div class="countdown-card" style="${ifActive?'border-color:var(--color-iftar)':''}">
+                        <div class="countdown-label">${methodNames[method]} <br> Iftar</div>
+                        <div class="countdown-time">${fiqh[method].iftar_12h||fiqh[method].iftar}</div>
+                        <div class="countdown-timer" id="timer-${method}-if">--:--:--:--</div>
+                    </div>`;
+            });
+            document.getElementById('countdownGrid').innerHTML = countdownHTML;
+
+            // Prayer grid (use Hanafi as default)
+            const timings = fiqh.hanafi.timings_12h || fiqh.hanafi.timings;
+            const timings24 = fiqh.hanafi.timings;
+            let prayerHTML = '';
+            ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'].forEach(p => {
+                prayerHTML += `<div class="prayer-item"><div class="prayer-name">${p}</div><div class="prayer-time">${timings[p]||timings24[p]||'--:--'}</div></div>`;
+            });
+            document.getElementById('prayerGrid').innerHTML = prayerHTML;
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            if (!allFiqhData) return;
+            const now = new Date();
+            // Use methodOrder for consistent ordering: Jaffari, Hanafi, Shafi
+            const methodOrder = ['jaffari', 'hanafi', 'shafi'];
+            methodOrder.forEach(k => {
+                const v = allFiqhData.fiqh_times[k];
+                if (!v) return;
+                const se = v.sehri_ends, ift = v.iftar_12h||v.iftar;
+                ['se','if'].forEach((type,i) => {
+                    const timeStr = i===0 ? se : ift;
+                    const parts = timeStr.split(':');
+                    if (parts.length < 2) return; // Skip invalid time
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    if (isNaN(h) || isNaN(m)) return; // Skip NaN values
+                    const d = new Date(now); d.setHours(h,m,0,0);
+                    if (d<now) d.setDate(d.getDate()+1);
+                    const diff = d - now;
+                    const el = document.getElementById(`timer-${k}-${type}`);
+                    if (el) {
+                        if (diff <= 0) { el.textContent = '00:00:00:00'; return; }
+                        const pad = n=>String(n).padStart(2,'0');
+                        const days = Math.floor(diff/(1000*60*60*24));
+                        const hrs = Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+                        const mins = Math.floor((diff%(1000*60*60))/(1000*60));
+                        const secs = Math.floor((diff%(1000*60))/1000);
+                        el.textContent = `${pad(days)}:${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+                    }
+                });
+            });
+        }
+
+        function copyDua(btn) {
+            const card = btn.closest('.dua-card');
+            const text = `${card.querySelector('.dua-arabic').textContent}\n\n${card.querySelector('.dua-meaning').textContent}`;
+            navigator.clipboard.writeText(text).then(() => {
+                btn.querySelector('i').className = 'fas fa-check';
+                setTimeout(() => btn.querySelector('i').className = 'fas fa-copy', 2000);
+            });
+        }
+    </script>
+</body>
+</html>
