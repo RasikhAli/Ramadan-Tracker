@@ -8,6 +8,14 @@ IMPORTANT: All countdown calculations must:
 3. Compare current time vs prayer time in SAME timezone
 4. If prayer time has passed, switch to next day's event
 5. Never show negative countdowns
+
+ISLAMIC DATE RULE:
+The Islamic day changes at Maghrib (sunset), not midnight.
+- Before Maghrib: Current Hijri day
+- After Maghrib: Next Hijri day (new Islamic day begins)
+
+Example: 1 Ramadan continues until Maghrib on Feb 19, 2026.
+After Maghrib on Feb 19, it becomes 2 Ramadan.
 """
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Tuple
@@ -187,6 +195,58 @@ class CountdownService:
         minutes = countdown['minutes']
         seconds = countdown['seconds']
         return f"{pad(days)}:{pad(hours)}:{pad(minutes)}:{pad(seconds)}"
+    
+    @staticmethod
+    def is_after_maghrib(maghrib_time: str, date_str: str, timezone_str: str) -> bool:
+        """
+        Check if current time is after Maghrib (sunset).
+        
+        In Islamic tradition, the day changes at Maghrib, not midnight.
+        This function determines if we've passed Maghrib for the current date.
+        
+        Args:
+            maghrib_time: Maghrib time in HH:MM format
+            date_str: Date in DD-MM-YYYY format
+            timezone_str: Timezone string (e.g., "Asia/Karachi")
+        
+        Returns:
+            True if current time is after Maghrib, False otherwise
+        """
+        current_time = CountdownService.get_current_time_in_timezone(timezone_str)
+        maghrib_dt = CountdownService.parse_time_to_datetime(maghrib_time, date_str, timezone_str)
+        
+        if not maghrib_dt:
+            logger.error(f"Failed to parse Maghrib time: {maghrib_time}")
+            return False
+        
+        return current_time >= maghrib_dt
+    
+    @staticmethod
+    def get_islamic_date_offset(maghrib_time: str, date_str: str, timezone_str: str) -> int:
+        """
+        Get the offset to apply to Hijri day based on Maghrib.
+        
+        In Islamic tradition, the day changes at Maghrib, not midnight:
+        - Before Maghrib: The current time belongs to the PREVIOUS Islamic day
+          (night portion before Fajr is part of the previous day)
+          offset = -1 (use previous day's Hijri date)
+        - After Maghrib: The new Islamic day has begun
+          offset = 0 (use current day's Hijri date from API)
+        
+        Example for Feb 19, 2026 (Pakistan):
+        - API returns 2 Ramadan for Feb 19
+        - At 00:21 (before Maghrib): Show 1 Ramadan (offset = -1)
+        - At 18:30 (after Maghrib): Show 2 Ramadan (offset = 0)
+        
+        Args:
+            maghrib_time: Maghrib time in HH:MM format
+            date_str: Date in DD-MM-YYYY format
+            timezone_str: Timezone string (e.g., "Asia/Karachi")
+        
+        Returns:
+            -1 if before Maghrib (previous Islamic day), 0 if after Maghrib (current Islamic day)
+        """
+        return 0 if CountdownService.is_after_maghrib(maghrib_time, date_str, timezone_str) else -1
 
 
 # Singleton instance

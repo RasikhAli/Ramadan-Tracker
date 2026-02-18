@@ -328,6 +328,46 @@ async def get_prayer_times(
         logger.error(f"Failed to fetch prayer times: {e}")
         raise HTTPException(status_code=503, detail=f"Failed to fetch prayer times: {str(e)}")
     
+    # Adjust Hijri date based on Maghrib (Islamic day changes at Maghrib, not midnight)
+    maghrib_time = prayer_times["timings"]["Maghrib"]
+    islamic_day_offset = countdown_service.get_islamic_date_offset(maghrib_time, date, tz)
+    
+    # Adjust the Hijri date based on offset (-1 = before Maghrib, 0 = after Maghrib)
+    hijri_date = prayer_times.get("hijri_date", {})
+    if islamic_day_offset != 0 and hijri_date:
+        hijri_day = int(hijri_date.get("day", 1)) + islamic_day_offset
+        hijri_month_num = int(hijri_date.get("month_number", 9))
+        hijri_year = int(hijri_date.get("year", 1447))
+        
+        # Handle month overflow/underflow
+        hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+                        'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+                        'Ramadan', 'Shawwal', 'Dhul Qadah', 'Dhul Hijjah']
+        
+        if hijri_day > 30:
+            hijri_day -= 30
+            hijri_month_num += 1
+            if hijri_month_num > 12:
+                hijri_month_num = 1
+                hijri_year += 1
+        elif hijri_day < 1:
+            hijri_month_num -= 1
+            if hijri_month_num < 1:
+                hijri_month_num = 12
+                hijri_year -= 1
+            hijri_day += 30
+        
+        hijri_month_name = hijri_months[hijri_month_num - 1] if 1 <= hijri_month_num <= 12 else hijri_date.get("month", "")
+        
+        hijri_date = {
+            "date": f"{hijri_day}-{hijri_month_num}-{hijri_year}",
+            "day": str(hijri_day),
+            "month": hijri_month_name,
+            "month_number": str(hijri_month_num),
+            "year": str(hijri_year),
+            "format": f"{hijri_day} {hijri_month_name} {hijri_year}",
+        }
+    
     result = {
         "country": country,
         "city": city,
@@ -348,8 +388,9 @@ async def get_prayer_times(
         "iftar": prayer_times["iftar"],
         "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
         "is_derived": prayer_times.get("is_derived", False),
-        "hijri_date": prayer_times.get("hijri_date", {}),
+        "hijri_date": hijri_date,
         "gregorian_date": prayer_times.get("gregorian_date", {}),
+        "is_after_maghrib": islamic_day_offset == 0,
     }
     
     if debug:
@@ -432,6 +473,54 @@ async def get_all_fiqh_prayer_times(
             logger.error(f"Failed to fetch {method} times: {e}")
             results[method] = {"error": str(e)}
     
+    # Adjust Hijri date based on Maghrib (Islamic day changes at Maghrib, not midnight)
+    # Use Maghrib time from Hanafi method (or first available)
+    maghrib_time = None
+    for method in FIQH_METHODS:
+        if method in results and "timings" in results[method]:
+            maghrib_time = results[method]["timings"].get("Maghrib")
+            if maghrib_time:
+                break
+    
+    is_after_maghrib = False
+    if maghrib_time and hijri_date:
+        islamic_day_offset = countdown_service.get_islamic_date_offset(maghrib_time, date, tz)
+        is_after_maghrib = islamic_day_offset == 0  # 0 = after Maghrib, -1 = before Maghrib
+        
+        if islamic_day_offset != 0:  # Before Maghrib, need to adjust
+            hijri_day = int(hijri_date.get("day", 1)) + islamic_day_offset
+            hijri_month_num = int(hijri_date.get("month_number", 9))
+            hijri_year = int(hijri_date.get("year", 1447))
+            
+            # Handle month overflow/underflow
+            hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+                            'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+                            'Ramadan', 'Shawwal', 'Dhul Qadah', 'Dhul Hijjah']
+            
+            if hijri_day > 30:
+                hijri_day -= 30
+                hijri_month_num += 1
+                if hijri_month_num > 12:
+                    hijri_month_num = 1
+                    hijri_year += 1
+            elif hijri_day < 1:
+                hijri_month_num -= 1
+                if hijri_month_num < 1:
+                    hijri_month_num = 12
+                    hijri_year -= 1
+                hijri_day += 30
+            
+            hijri_month_name = hijri_months[hijri_month_num - 1] if 1 <= hijri_month_num <= 12 else hijri_date.get("month", "")
+            
+            hijri_date = {
+                "date": f"{hijri_day}-{hijri_month_num}-{hijri_year}",
+                "day": str(hijri_day),
+                "month": hijri_month_name,
+                "month_number": str(hijri_month_num),
+                "year": str(hijri_year),
+                "format": f"{hijri_day} {hijri_month_name} {hijri_year}",
+            }
+    
     return {
         "country": country,
         "city": city,
@@ -444,6 +533,7 @@ async def get_all_fiqh_prayer_times(
         "fiqh_times": results,
         "hijri_date": hijri_date or {},
         "gregorian_date": gregorian_date_info or {},
+        "is_after_maghrib": is_after_maghrib,
     }
 
 
@@ -621,17 +711,29 @@ async def health_check():
 @app.get("/api/hijri-date")
 async def get_hijri_date(
     date: Optional[str] = Query(None),
-    timezone: Optional[str] = Query(None)
+    timezone: Optional[str] = Query(None),
+    maghrib_time: Optional[str] = Query(None, description="Maghrib time in HH:MM format for Islamic date adjustment")
 ):
     """
     Get Hijri date for a given Gregorian date.
     Uses AlAdhan API for accurate conversion.
+    
+    IMPORTANT: In Islamic tradition, the day changes at Maghrib (sunset), not midnight.
+    If maghrib_time is provided and current time is after Maghrib, the Hijri day is incremented by 1.
+    
+    Example: 1 Ramadan continues until Maghrib on Feb 19, 2026.
+    After Maghrib on Feb 19, it becomes 2 Ramadan.
     """
     # Get current date in timezone if not provided
+    tz = timezone or "UTC"
+    now = countdown_service.get_current_time_in_timezone(tz)
     if date is None:
-        tz = timezone or "UTC"
-        now = countdown_service.get_current_time_in_timezone(tz)
         date = now.strftime("%d-%m-%Y")
+    
+    # Check if we need to adjust for Islamic date (after Maghrib)
+    islamic_day_offset = 0
+    if maghrib_time:
+        islamic_day_offset = countdown_service.get_islamic_date_offset(maghrib_time, date, tz)
     
     # Call AlAdhan API for Hijri date
     try:
@@ -653,22 +755,44 @@ async def get_hijri_date(
                 hijri = data.get("data", {}).get("hijri", {})
                 gregorian = data.get("data", {}).get("gregorian", {})
                 
+                # Apply Islamic day offset if after Maghrib
+                hijri_day = int(hijri.get("day", 1)) + islamic_day_offset
+                hijri_month_num = int(hijri.get("month", {}).get("number", 9))
+                hijri_year = int(hijri.get("year", 1447))
+                
+                # Handle month overflow
+                hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+                                'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+                                'Ramadan', 'Shawwal', 'Dhul Qadah', 'Dhul Hijjah']
+                
+                if hijri_day > 30:
+                    hijri_day -= 30
+                    hijri_month_num += 1
+                    if hijri_month_num > 12:
+                        hijri_month_num = 1
+                        hijri_year += 1
+                
+                hijri_month_name = hijri_months[hijri_month_num - 1] if 1 <= hijri_month_num <= 12 else hijri.get("month", {}).get("en", "")
+                
                 return {
                     "gregorian_date": date,
-                    "hijri_date": hijri.get("date", ""),
-                    "hijri_day": hijri.get("day", ""),
-                    "hijri_month": hijri.get("month", {}).get("en", ""),
-                    "hijri_month_number": hijri.get("month", {}).get("number", ""),
-                    "hijri_year": hijri.get("year", ""),
-                    "hijri_format": f"{hijri.get('day', '')} {hijri.get('month', {}).get('en', '')} {hijri.get('year', '')}",
+                    "hijri_date": f"{hijri_day}-{hijri_month_num}-{hijri_year}",
+                    "hijri_day": str(hijri_day),
+                    "hijri_month": hijri_month_name,
+                    "hijri_month_number": str(hijri_month_num),
+                    "hijri_year": str(hijri_year),
+                    "hijri_format": f"{hijri_day} {hijri_month_name} {hijri_year}",
                     "gregorian_format": f"{gregorian.get('day', '')} {gregorian.get('month', {}).get('en', '')} {gregorian.get('year', '')}",
                     "weekday_en": hijri.get("weekday", {}).get("en", ""),
+                    "islamic_day_offset": islamic_day_offset,
+                    "is_after_maghrib": islamic_day_offset == 0,
                 }
     except Exception as e:
         logger.error(f"Failed to fetch Hijri date: {e}")
     
     # Fallback: Calculate approximate Hijri date using known reference
     # Reference: 1 Ramadan 1447 = February 18, 2026 (Pakistan moon sighting)
+    # IMPORTANT: Islamic day changes at Maghrib, not midnight
     try:
         from datetime import datetime as dt
         day, month, year = map(int, date.split('-'))
@@ -681,7 +805,7 @@ async def get_hijri_date(
         # Start from 1 Ramadan 1447
         hijri_year = 1447
         hijri_month = 9  # Ramadan
-        hijri_day = 1 + days_diff
+        hijri_day = 1 + days_diff + islamic_day_offset  # Add offset if after Maghrib
         
         # Handle day overflow/underflow
         hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
@@ -715,6 +839,8 @@ async def get_hijri_date(
             "hijri_format": f"{hijri_day} {hijri_month_name} {hijri_year}",
             "gregorian_format": f"{day} {gregorian_date.strftime('%B')} {year}",
             "weekday_en": gregorian_date.strftime("%A"),
+            "islamic_day_offset": islamic_day_offset,
+            "is_after_maghrib": islamic_day_offset == 0,
         }
     except Exception as e:
         logger.error(f"Failed to calculate fallback Hijri date: {e}")
@@ -772,6 +898,46 @@ async def get_prayer_times_by_coords(
         logger.error(f"Failed to fetch prayer times: {e}")
         raise HTTPException(status_code=503, detail=f"Failed to fetch prayer times: {str(e)}")
     
+    # Adjust Hijri date based on Maghrib (Islamic day changes at Maghrib, not midnight)
+    maghrib_time = prayer_times["timings"]["Maghrib"]
+    islamic_day_offset = countdown_service.get_islamic_date_offset(maghrib_time, date, tz)
+    
+    # Adjust the Hijri date based on offset (-1 = before Maghrib, 0 = after Maghrib)
+    hijri_date = prayer_times.get("hijri_date", {})
+    if islamic_day_offset != 0 and hijri_date:
+        hijri_day = int(hijri_date.get("day", 1)) + islamic_day_offset
+        hijri_month_num = int(hijri_date.get("month_number", 9))
+        hijri_year = int(hijri_date.get("year", 1447))
+        
+        # Handle month overflow/underflow
+        hijri_months = ['Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+                        'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+                        'Ramadan', 'Shawwal', 'Dhul Qadah', 'Dhul Hijjah']
+        
+        if hijri_day > 30:
+            hijri_day -= 30
+            hijri_month_num += 1
+            if hijri_month_num > 12:
+                hijri_month_num = 1
+                hijri_year += 1
+        elif hijri_day < 1:
+            hijri_month_num -= 1
+            if hijri_month_num < 1:
+                hijri_month_num = 12
+                hijri_year -= 1
+            hijri_day += 30
+        
+        hijri_month_name = hijri_months[hijri_month_num - 1] if 1 <= hijri_month_num <= 12 else hijri_date.get("month", "")
+        
+        hijri_date = {
+            "date": f"{hijri_day}-{hijri_month_num}-{hijri_year}",
+            "day": str(hijri_day),
+            "month": hijri_month_name,
+            "month_number": str(hijri_month_num),
+            "year": str(hijri_year),
+            "format": f"{hijri_day} {hijri_month_name} {hijri_year}",
+        }
+    
     result = {
         "coordinates": {"lat": lat, "lon": lon},
         "date": date,
@@ -788,8 +954,9 @@ async def get_prayer_times_by_coords(
         "iftar": prayer_times["iftar"],
         "iftar_12h": prayer_times["iftar_12h"] if format_12h else prayer_times["iftar"],
         "is_derived": prayer_times.get("is_derived", False),
-        "hijri_date": prayer_times.get("hijri_date", {}),
+        "hijri_date": hijri_date,
         "gregorian_date": prayer_times.get("gregorian_date", {}),
+        "is_after_maghrib": islamic_day_offset == 0,
     }
     
     if debug:
