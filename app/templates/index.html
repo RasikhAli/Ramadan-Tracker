@@ -122,6 +122,138 @@
         }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
+        /* Custom Cursor */
+        /* .custom-cursor {
+            position: fixed;
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s;
+        }
+        .custom-cursor svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 8px var(--color-primary));
+            animation: cursorPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes cursorPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.6;
+            transition: opacity 0.5s;
+        } */
+
+        /* Floating Lanterns */
+        /* .lanterns {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .lantern {
+            position: absolute;
+            width: 20px;
+            height: 28px;
+            background: linear-gradient(135deg, #f0c14b 0%, #fbbf24 50%, #f59e0b 100%);
+            border-radius: 50% 50% 45% 45%;
+            opacity: 0.15;
+            animation: floatLantern 15s ease-in-out infinite;
+        }
+        .lantern::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 8px;
+            background: #8b4513;
+        }
+        .lantern::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 6px;
+            background: linear-gradient(to bottom, #f0c14b, #92400e);
+            border-radius: 0 0 50% 50%;
+        }
+        @keyframes floatLantern {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-30px) rotate(2deg); }
+            50% { transform: translateY(-15px) rotate(-2deg); }
+            75% { transform: translateY(-25px) rotate(1deg); }
+        } */
+
+        [data-theme="light"] .lantern {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            opacity: 0.2;
+        }
+
+        /* Hover Glow Effects */
+        .btn, .card, .fiqh-card, .countdown-card, .prayer-item, .dua-card {
+            transition: box-shadow var(--transition-normal), transform var(--transition-fast), border-color var(--transition-fast);
+        }
+        .btn:hover, .card:hover, .fiqh-card:hover, .countdown-card:hover, .prayer-item:hover, .dua-card:hover {
+            box-shadow: 0 0 20px var(--color-primary-glow), var(--shadow-card);
+            transform: translateY(-2px);
+        }
+        .btn {
+            background: var(--color-primary);
+            color: #1e293b;
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: var(--font-ui);
+        }
+        .btn:hover {
+            box-shadow: 0 0 25px var(--color-primary-glow);
+        }
+
+        /* Countdown Sparkle Effect */
+        .countdown-timer {
+            font-family: var(--font-ui);
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            transition: text-shadow 0.3s;
+        }
+        .countdown-timer.sparkle {
+            animation: sparkleGlow 1s ease-in-out infinite;
+        }
+        @keyframes sparkleGlow {
+            0%, 100% { text-shadow: 0 0 5px var(--color-primary); }
+            50% { text-shadow: 0 0 20px var(--color-primary), 0 0 30px var(--color-primary-glow); }
+        }
+        .countdown-card.active .countdown-timer {
+            color: var(--color-primary);
+            text-shadow: 0 0 10px var(--color-primary-glow);
+        }
+        .countdown-card.active.sehri-active .countdown-timer {
+            color: var(--color-sehri);
+            text-shadow: 0 0 10px var(--color-sehri-glow);
+        }
+        .countdown-card.active.iftar-active .countdown-timer {
+            color: var(--color-iftar);
+            text-shadow: 0 0 10px var(--color-iftar-glow);
+        }
+
         .app-container { max-width: 1400px; margin: 0 auto; padding: var(--space-lg); }
 
         .header { text-align: center; padding: var(--space-2xl) 0 var(--space-xl); }
@@ -441,6 +573,74 @@
                 container.appendChild(star);
             }
         }
+
+        // function createLanterns() {
+        //     let container = document.getElementById('lanterns');
+        //     if (!container) {
+        //         container = document.createElement('div');
+        //         container.id = 'lanterns';
+        //         container.className = 'lanterns';
+        //         document.body.appendChild(container);
+        //     }
+        //     for (let i = 0; i < 8; i++) {
+        //         const lantern = document.createElement('div');
+        //         lantern.className = 'lantern';
+        //         lantern.style.left = Math.random() * 100 + '%';
+        //         lantern.style.top = (60 + Math.random() * 40) + '%';
+        //         lantern.style.animationDelay = Math.random() * 10 + 's';
+        //         lantern.style.animationDuration = (12 + Math.random() * 8) + 's';
+        //         container.appendChild(lantern);
+        //     }
+        // }
+
+        // function initCustomCursor() {
+        //     // Skip on mobile/touch devices
+        //     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
+            
+        //     const cursor = document.createElement('div');
+        //     cursor.className = 'custom-cursor';
+        //     const svgIcon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+        //         '<path d="M12 2C12 2 15 5 15 10C15 14.4183 12 18 12 22C12 18 9 14.4183 9 10C9 5 12 2 12 2Z" fill="#f0c14b"/>' +
+        //         '</svg>';
+        //     cursor.innerHTML = svgIcon;
+        //     document.body.appendChild(cursor);
+
+        //     const trail = document.createElement('div');
+        //     trail.className = 'cursor-trail';
+        //     document.body.appendChild(trail);
+
+        //     let mouseX = 0, mouseY = 0;
+        //     let cursorX = 0, cursorY = 0;
+        //     let trailX = 0, trailY = 0;
+
+        //     document.addEventListener('mousemove', (e) => {
+        //         mouseX = e.clientX;
+        //         mouseY = e.clientY;
+        //     });
+
+        //     function animate() {
+        //         // Smooth cursor follow
+        //         cursorX += (mouseX - cursorX) * 0.15;
+        //         cursorY += (mouseY - cursorY) * 0.15;
+        //         cursor.style.left = cursorX + 'px';
+        //         cursor.style.top = cursorY + 'px';
+
+        //         // Trail follows with delay
+        //         trailX += (mouseX - trailX) * 0.1;
+        //         trailY += (mouseY - trailY) * 0.1;
+        //         trail.style.left = trailX + 'px';
+        //         trail.style.top = trailY + 'px';
+
+        //         requestAnimationFrame(animate);
+        //     }
+        //     animate();
+
+        //     // Hide default cursor on interactive elements
+        //     const interactiveElements = document.querySelectorAll('a, button, input, select');
+        //     interactiveElements.forEach(el => {
+        //         el.style.cursor = 'none';
+        //     });
+        // }
 
         function updateCurrentDate() {
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });

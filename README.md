@@ -48,6 +48,50 @@ A modern, responsive web application for tracking Sehri and Iftar times during R
 - Thumb-friendly buttons and large tap targets
 - WCAG-compliant accessibility features
 
+## 📸 Screenshots
+
+### Dark Mode
+![Ramadan Tracker Dark Mode](https://via.placeholder.com/800x450/0f1729/f0c14b?text=Ramadan+Tracker+Dark+Mode)
+*Deep navy background with gold accents and animated starfield*
+
+### Light Mode
+![Ramadan Tracker Light Mode](https://via.placeholder.com/800x450/fefcf8/b45309?text=Ramadan+Tracker+Light+Mode)
+*Warm cream background with lantern motifs*
+
+### Mobile View
+![Ramadan Tracker Mobile](https://via.placeholder.com/400x800/1a2744/34d399?text=Mobile+View)
+*Responsive design with sticky countdown*
+
+## 🎨 UI/UX Design Details
+
+### Color Coding for Fiqh Methods
+| Fiqh Method | Color | Hex Code | Meaning |
+|-------------|-------|----------|---------|
+| Hanafi | Green | #34d399 | Represents the dominant school in South Asia |
+| Shafi/Maliki/Hanbali | Purple | #a78bfa | Represents the traditional Sunni schools |
+| Jaffari (Shia) | Pink | #f472b6 | Represents the Shia school |
+
+### Countdown Animations
+- **Sehri Countdown**: Blue glow effect (#60a5fa)
+- **Iftar Countdown**: Amber glow effect (#fbbf24)
+- **Active Countdown**: Highlighted border with pulsing animation
+- **Time Format**: DD:HH:MM:SS for precision
+
+### Dua Display
+- **Arabic Text**: Amiri font for elegant calligraphy-style rendering
+- **English Meaning**: Clear, readable translation
+- **Transliteration**: Phonetic guide for pronunciation
+- **Source**: Hadith reference (Sunan Abi Dawud)
+- **Copy Feature**: One-click clipboard copy for easy sharing
+
+### Responsive Breakpoints
+| Device | Max Width | Layout |
+|--------|-----------|--------|
+| Mobile | 480px | Single column, sticky countdown |
+| Tablet | 768px | Two column grid |
+| Desktop | 1024px | Three column fiqh cards |
+| Ultra-wide | 1400px | Max content width with margins |
+
 ## 🚀 What's New in This Version
 
 ### Multi-Fiqh Countdown Logic
